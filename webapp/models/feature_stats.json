@@ -1,0 +1,136 @@
+{
+  "C": {
+    "min": 0.17,
+    "max": 0.22,
+    "median": 0.2,
+    "p01": 0.18,
+    "p99": 0.22,
+    "is_flag": false
+  },
+  "Si": {
+    "min": 0.06,
+    "max": 0.36,
+    "median": 0.26,
+    "p01": 0.1,
+    "p99": 0.34,
+    "is_flag": false
+  },
+  "Mn": {
+    "min": 0.66,
+    "max": 1.3,
+    "median": 0.96,
+    "p01": 0.798,
+    "p99": 1.2735000000000003,
+    "is_flag": false
+  },
+  "P": {
+    "min": 0.0012,
+    "max": 0.02,
+    "median": 0.012,
+    "p01": 0.008,
+    "p99": 0.018,
+    "is_flag": false
+  },
+  "S": {
+    "min": 0.01,
+    "max": 0.03,
+    "median": 0.021,
+    "p01": 0.012,
+    "p99": 0.028,
+    "is_flag": false
+  },
+  "Cu": {
+    "min": 0.03,
+    "max": 0.1,
+    "median": 0.05,
+    "p01": 0.03,
+    "p99": 0.08,
+    "is_flag": false
+  },
+  "Cr": {
+    "min": 1.01,
+    "max": 1.26,
+    "median": 1.13,
+    "p01": 1.0665,
+    "p99": 1.1935000000000002,
+    "is_flag": false
+  },
+  "Ni": {
+    "min": 0.004,
+    "max": 0.16,
+    "median": 0.04,
+    "p01": 0.03,
+    "p99": 0.15,
+    "is_flag": false
+  },
+  "V": {
+    "min": 0.0012,
+    "max": 0.027,
+    "median": 0.011,
+    "p01": 0.008,
+    "p99": 0.019110000000000012,
+    "is_flag": false
+  },
+  "Ti": {
+    "min": 0.002,
+    "max": 0.1,
+    "median": 0.06,
+    "p01": 0.003,
+    "p99": 0.08,
+    "is_flag": false
+  },
+  "W": {
+    "min": 0.003,
+    "max": 0.006,
+    "median": 0.005,
+    "p01": 0.00371,
+    "p99": 0.005,
+    "is_flag": false
+  },
+  "Al": {
+    "min": 0.001,
+    "max": 0.048,
+    "median": 0.029,
+    "p01": 0.01541,
+    "p99": 0.046,
+    "is_flag": false
+  },
+  "B": {
+    "min": 3e-05,
+    "max": 0.0008,
+    "median": 0.0004,
+    "p01": 0.0002,
+    "p99": 0.0005,
+    "is_flag": false
+  },
+  "V_missing": {
+    "min": 0,
+    "max": 1,
+    "median": 0,
+    "is_flag": true
+  },
+  "Ti_missing": {
+    "min": 0,
+    "max": 1,
+    "median": 0,
+    "is_flag": true
+  },
+  "W_missing": {
+    "min": 0,
+    "max": 1,
+    "median": 0,
+    "is_flag": true
+  },
+  "Al_missing": {
+    "min": 0,
+    "max": 1,
+    "median": 0,
+    "is_flag": true
+  },
+  "B_missing": {
+    "min": 0,
+    "max": 1,
+    "median": 0,
+    "is_flag": true
+  }
+}

@@ -1,0 +1,41 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Node / Bun
+node_modules/
+webapp/frontend/dist/
+
+# PyInstaller output
+webapp/backend/dist/
+webapp/backend/build/
+
+# Tauri build output
+src-tauri/target/
+
+# Large data files (Excel, raw parquet, CSV outputs)
+data/legacy/
+data/legacy_code/
+data/*.parquet
+data/*.csv
+data/cleaning_report.json
+data/quarantine.json
+data/modeling/
+
+# Generated reports
+output/
+
+# uv lock (optional — uncomment to track)
+# uv.lock
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Trellis personal workspace
+.trellis/workspace/

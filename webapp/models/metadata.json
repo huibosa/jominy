@@ -1,0 +1,44 @@
+{
+  "features": [
+    "C",
+    "Si",
+    "Mn",
+    "P",
+    "S",
+    "Cu",
+    "Cr",
+    "Ni",
+    "V",
+    "Ti",
+    "W",
+    "Al",
+    "B",
+    "V_missing",
+    "Ti_missing",
+    "W_missing",
+    "Al_missing",
+    "B_missing"
+  ],
+  "j9_train_rows": 566,
+  "delta_train_rows": 491,
+  "j9_blend": {
+    "xgb_weight": 0.7,
+    "pls_weight": 0.3
+  },
+  "delta_blend": {
+    "xgb_weight": 0.6,
+    "bayes_weight": 0.4
+  },
+  "expected_oof_metrics": {
+    "J9": {
+      "mae": 1.7106,
+      "rmse": 2.2135,
+      "r2": 0.4808
+    },
+    "delta": {
+      "mae": 1.094,
+      "rmse": 1.4363,
+      "r2": 0.0012
+    }
+  }
+}
