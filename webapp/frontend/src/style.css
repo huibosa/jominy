@@ -50,13 +50,32 @@ body {
 }
 
 header h1 {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 1.7rem;
 }
 
 header p {
   margin: 0 0 1.5rem;
   color: var(--muted);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.language-toggle {
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
 }
 
 .card {
@@ -84,12 +103,6 @@ label {
   gap: 0.25rem;
   font-size: 0.85rem;
   color: var(--muted);
-}
-
-label.optional .name::after {
-  content: " (opt)";
-  color: var(--muted);
-  font-weight: 400;
 }
 
 label .name {
@@ -153,6 +166,11 @@ button.secondary {
   border: 1px solid var(--accent);
 }
 
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .results {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -183,6 +201,10 @@ button.secondary {
   font-size: 0.85rem;
   color: var(--muted);
   margin-left: 0.25rem;
+}
+
+.result-note {
+  margin-top: 0.75rem;
 }
 
 .warning, .error {
@@ -231,6 +253,17 @@ footer {
 
 footer a {
   color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .header-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .results {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Loading overlay — shown during Tauri sidecar warmup */

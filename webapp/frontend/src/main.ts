@@ -5,6 +5,11 @@ import { BASE } from "./api";
 const REQUIRED_ELEMENTS = ["C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr"] as const;
 const OPTIONAL_ELEMENTS = ["V", "Ti", "W", "Al", "B"] as const;
 type ElementKey = (typeof REQUIRED_ELEMENTS)[number] | (typeof OPTIONAL_ELEMENTS)[number];
+type Language = "zh" | "en";
+type FormValues = Record<ElementKey, string>;
+
+const LANGUAGE_STORAGE_KEY = "jominy-language";
+const DEFAULT_LANGUAGE: Language = "zh";
 
 const SAMPLE_COMPOSITION: CompositionRequest = {
   C: 0.20,
@@ -22,21 +27,118 @@ const SAMPLE_COMPOSITION: CompositionRequest = {
   B: null,
 };
 
-const ELEMENT_LABELS: Record<ElementKey, string> = {
-  C: "Carbon",
-  Si: "Silicon",
-  Mn: "Manganese",
-  P: "Phosphorus",
-  S: "Sulfur",
-  Cu: "Copper",
-  Ni: "Nickel",
-  Cr: "Chromium",
-  V: "Vanadium",
-  Ti: "Titanium",
-  W: "Tungsten",
-  Al: "Aluminum",
-  B: "Boron",
-};
+const TRANSLATIONS = {
+  zh: {
+    htmlLang: "zh-CN",
+    title: "Jominy 淬透性预测器",
+    subtitle: (rows: number, mae: number) =>
+      `根据钢材化学成分预测洛氏硬度 J9 / J15。模型使用 ${rows} 个样本验证，J9 预期 MAE ±${mae.toFixed(2)} HRC。`,
+    switchLabel: "English",
+    switchAria: "Switch language to English",
+    requiredTitle: "必填元素（wt%）",
+    optionalTitle: "可选微量元素（wt%）",
+    optionalHint: "未检测的元素请留空，模型会按缺失值处理。",
+    optionalTag: "（可选）",
+    typicalRange: (low: number, high: number) => `常见范围 ${low.toFixed(3)}–${high.toFixed(3)} wt%`,
+    predictButton: "预测 J9 / J15",
+    resetButton: "恢复示例",
+    predictionTitle: "预测结果",
+    predictionHint: "提交表单后显示预测硬度。",
+    expectedMae: (j9: number, delta: number) =>
+      `交叉验证预期 MAE：J9 ±${j9.toFixed(2)} HRC，δ ±${delta.toFixed(2)} HRC。`,
+    warningTitle: "输入超出训练范围",
+    breakdownTitle: "分模型预测",
+    j9Xgb: "XGBoost 预测 J9",
+    j9Pls: "PLS 预测 J9",
+    deltaXgb: "XGBoost 预测 δ",
+    deltaBayes: "BayesianRidge 预测 δ",
+    apiError: "无法连接 API",
+    metadataError: (status: number) => `元数据请求失败：${status}`,
+    predictionError: (status: number, detail: string) => `预测请求失败（${status}）：${detail}`,
+    requiredError: (key: string) => `${key} 为必填项`,
+    footerPrefix: "模型：J9 使用 0.70·XGBoost + 0.30·PLS，δ 使用 0.60·XGBoost + 0.40·BayesianRidge。",
+    apiDocs: "API 文档",
+    elements: {
+      C: "碳",
+      Si: "硅",
+      Mn: "锰",
+      P: "磷",
+      S: "硫",
+      Cu: "铜",
+      Ni: "镍",
+      Cr: "铬",
+      V: "钒",
+      Ti: "钛",
+      W: "钨",
+      Al: "铝",
+      B: "硼",
+    },
+  },
+  en: {
+    htmlLang: "en",
+    title: "Jominy Hardenability Predictor",
+    subtitle: (rows: number, mae: number) =>
+      `Predict Rockwell J9 / J15 from steel composition. Validated on ${rows} specimens, expected MAE ±${mae.toFixed(2)} HRC.`,
+    switchLabel: "中文",
+    switchAria: "切换到中文",
+    requiredTitle: "Required elements (wt%)",
+    optionalTitle: "Optional trace elements (wt%)",
+    optionalHint: "Leave blank if not measured — the model will treat them as missing.",
+    optionalTag: " (opt)",
+    typicalRange: (low: number, high: number) => `typical ${low.toFixed(3)}–${high.toFixed(3)} wt%`,
+    predictButton: "Predict J9 / J15",
+    resetButton: "Reset to sample",
+    predictionTitle: "Prediction",
+    predictionHint: "Submit the form to see predicted hardness.",
+    expectedMae: (j9: number, delta: number) =>
+      `Expected MAE from cross-validation: ±${j9.toFixed(2)} HRC on J9, ±${delta.toFixed(2)} HRC on δ.`,
+    warningTitle: "Input outside training range",
+    breakdownTitle: "Per-component predictions",
+    j9Xgb: "J9 from XGBoost",
+    j9Pls: "J9 from PLS",
+    deltaXgb: "δ from XGBoost",
+    deltaBayes: "δ from BayesianRidge",
+    apiError: "Cannot reach API",
+    metadataError: (status: number) => `metadata: ${status}`,
+    predictionError: (status: number, detail: string) => `prediction failed (${status}): ${detail}`,
+    requiredError: (key: string) => `${key} is required`,
+    footerPrefix: "Model: 0.70·XGBoost + 0.30·PLS for J9, 0.60·XGBoost + 0.40·BayesianRidge for δ. ",
+    apiDocs: "API docs",
+    elements: {
+      C: "Carbon",
+      Si: "Silicon",
+      Mn: "Manganese",
+      P: "Phosphorus",
+      S: "Sulfur",
+      Cu: "Copper",
+      Ni: "Nickel",
+      Cr: "Chromium",
+      V: "Vanadium",
+      Ti: "Titanium",
+      W: "Tungsten",
+      Al: "Aluminum",
+      B: "Boron",
+    },
+  },
+} as const;
+
+function getInitialLanguage(): Language {
+  const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  return saved === "en" || saved === "zh" ? saved : DEFAULT_LANGUAGE;
+}
+
+function saveLanguage(language: Language): void {
+  window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+}
+
+function sampleFormValues(): FormValues {
+  return Object.fromEntries(
+    [...REQUIRED_ELEMENTS, ...OPTIONAL_ELEMENTS].map((key) => {
+      const value = SAMPLE_COMPOSITION[key];
+      return [key, value === null ? "" : String(value)];
+    }),
+  ) as FormValues;
+}
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -54,17 +156,22 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function fmtRange(stat: { p01?: number; p99?: number } | undefined): string {
+function fmtRange(
+  stat: { p01?: number; p99?: number } | undefined,
+  language: Language,
+): string {
   if (!stat || stat.p01 === undefined || stat.p99 === undefined) return "";
-  return `typical ${stat.p01.toFixed(3)}–${stat.p99.toFixed(3)} wt%`;
+  return TRANSLATIONS[language].typicalRange(stat.p01, stat.p99);
 }
 
 function buildField(
   key: ElementKey,
   optional: boolean,
-  initial: number | null,
-  stat?: { p01?: number; p99?: number },
+  initial: string,
+  stat: { p01?: number; p99?: number } | undefined,
+  language: Language,
 ): HTMLLabelElement {
+  const text = TRANSLATIONS[language];
   const input = el("input", {
     type: "number",
     name: key,
@@ -72,19 +179,30 @@ function buildField(
     min: "0",
     "data-key": key,
   });
-  if (initial !== null) input.value = String(initial);
+  input.value = initial;
   if (!optional) input.required = true;
 
-  const label = el("label", { class: optional ? "optional" : "" }, [
-    el("span", { class: "name" }, [`${key} — ${ELEMENT_LABELS[key]}`]),
+  return el("label", { class: optional ? "optional" : "" }, [
+    el("span", { class: "name" }, [
+      `${key} — ${text.elements[key]}${optional ? text.optionalTag : ""}`,
+    ]),
     input,
-    el("span", { class: "range" }, [fmtRange(stat)]),
+    el("span", { class: "range" }, [fmtRange(stat, language)]),
   ]);
-  return label;
 }
 
-function readForm(form: HTMLFormElement): CompositionRequest {
-  const get = (key: string) => {
+function readFormValues(form: HTMLFormElement): FormValues {
+  return Object.fromEntries(
+    [...REQUIRED_ELEMENTS, ...OPTIONAL_ELEMENTS].map((key) => {
+      const input = form.querySelector<HTMLInputElement>(`[data-key="${key}"]`);
+      return [key, input?.value ?? ""];
+    }),
+  ) as FormValues;
+}
+
+function parseComposition(form: HTMLFormElement, language: Language): CompositionRequest {
+  const text = TRANSLATIONS[language];
+  const get = (key: ElementKey) => {
     const input = form.querySelector<HTMLInputElement>(`[data-key="${key}"]`);
     if (!input) return null;
     const val = input.value.trim();
@@ -92,10 +210,10 @@ function readForm(form: HTMLFormElement): CompositionRequest {
     const n = Number(val);
     return Number.isFinite(n) ? n : null;
   };
-  const required = (key: string) => {
-    const v = get(key);
-    if (v === null) throw new Error(`${key} is required`);
-    return v;
+  const required = (key: (typeof REQUIRED_ELEMENTS)[number]) => {
+    const value = get(key);
+    if (value === null) throw new Error(text.requiredError(key));
+    return value;
   };
   return {
     C: required("C"),
@@ -114,14 +232,18 @@ function readForm(form: HTMLFormElement): CompositionRequest {
   };
 }
 
-function fillForm(form: HTMLFormElement, comp: CompositionRequest): void {
-  for (const [k, v] of Object.entries(comp)) {
-    const input = form.querySelector<HTMLInputElement>(`[data-key="${k}"]`);
-    if (input) input.value = v === null ? "" : String(v);
-  }
+function localizedWarning(warning: string, language: Language): string {
+  if (language === "en") return warning;
+  const match = warning.match(
+    /^([A-Za-z]+)=([^ ]+) is outside the typical training range \[([^,]+), ([^\]]+)\]/,
+  );
+  if (!match) return warning;
+  const [, element, value, low, high] = match;
+  return `${element}=${value} 超出常见训练范围 [${low}, ${high}]，属于外推，预测可能不可靠。`;
 }
 
-function renderResult(container: HTMLElement, result: PredictionResponse): void {
+function renderResult(container: HTMLElement, result: PredictionResponse, language: Language): void {
+  const text = TRANSLATIONS[language];
   container.innerHTML = "";
   const grid = el("div", { class: "results" }, [
     el("div", { class: "result" }, [
@@ -148,32 +270,35 @@ function renderResult(container: HTMLElement, result: PredictionResponse): void 
   ]);
   container.append(grid);
 
-  const expected = el("p", { class: "muted" }, [
-    `Expected MAE from cross-validation: ±${result.expected_mae.J9.toFixed(2)} HRC on J9, ±${result.expected_mae.delta.toFixed(2)} HRC on δ.`,
-  ]);
-  expected.style.color = "var(--muted)";
-  expected.style.fontSize = "0.85rem";
-  expected.style.marginTop = "0.75rem";
-  container.append(expected);
+  container.append(
+    el("p", { class: "muted result-note" }, [
+      text.expectedMae(result.expected_mae.J9, result.expected_mae.delta),
+    ]),
+  );
 
   if (result.warnings.length > 0) {
     const warn = el("div", { class: "warning" }, [
-      el("strong", {}, ["Input outside training range"]),
-      el("ul", {}, result.warnings.map((w) => el("li", {}, [w]))),
+      el("strong", {}, [text.warningTitle]),
+      el(
+        "ul",
+        {},
+        result.warnings.map((w) => el("li", {}, [localizedWarning(w, language)])),
+      ),
     ]);
     container.append(warn);
   }
 
-  const breakdown = el("details", {}, [
-    el("summary", {}, ["Per-component predictions"]),
-    el("ul", {}, [
-      el("li", {}, [`J9 from XGBoost: ${result.components.j9_xgb.toFixed(2)} HRC`]),
-      el("li", {}, [`J9 from PLS: ${result.components.j9_pls.toFixed(2)} HRC`]),
-      el("li", {}, [`δ from XGBoost: ${result.components.delta_xgb.toFixed(2)} HRC`]),
-      el("li", {}, [`δ from BayesianRidge: ${result.components.delta_bayes.toFixed(2)} HRC`]),
+  container.append(
+    el("details", {}, [
+      el("summary", {}, [text.breakdownTitle]),
+      el("ul", {}, [
+        el("li", {}, [`${text.j9Xgb}: ${result.components.j9_xgb.toFixed(2)} HRC`]),
+        el("li", {}, [`${text.j9Pls}: ${result.components.j9_pls.toFixed(2)} HRC`]),
+        el("li", {}, [`${text.deltaXgb}: ${result.components.delta_xgb.toFixed(2)} HRC`]),
+        el("li", {}, [`${text.deltaBayes}: ${result.components.delta_bayes.toFixed(2)} HRC`]),
+      ]),
     ]),
-  ]);
-  container.append(breakdown);
+  );
 }
 
 function showError(container: HTMLElement, message: string): void {
@@ -191,13 +316,16 @@ async function waitForBackend(): Promise<void> {
   });
 }
 
-async function fetchMetadata(): Promise<Metadata> {
+async function fetchMetadata(language: Language): Promise<Metadata> {
   const res = await fetch(`${BASE}/api/metadata`);
-  if (!res.ok) throw new Error(`metadata: ${res.status}`);
+  if (!res.ok) throw new Error(TRANSLATIONS[language].metadataError(res.status));
   return (await res.json()) as Metadata;
 }
 
-async function postPrediction(req: CompositionRequest): Promise<PredictionResponse> {
+async function postPrediction(
+  req: CompositionRequest,
+  language: Language,
+): Promise<PredictionResponse> {
   const res = await fetch(`${BASE}/api/predict`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -205,7 +333,7 @@ async function postPrediction(req: CompositionRequest): Promise<PredictionRespon
   });
   if (!res.ok) {
     const detail = await res.text();
-    throw new Error(`prediction failed (${res.status}): ${detail}`);
+    throw new Error(TRANSLATIONS[language].predictionError(res.status, detail));
   }
   return (await res.json()) as PredictionResponse;
 }
@@ -214,91 +342,134 @@ async function main(): Promise<void> {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) return;
 
+  let language = getInitialLanguage();
+  let formValues = sampleFormValues();
+  let lastResult: PredictionResponse | null = null;
+
+  const setDocumentLanguage = () => {
+    document.documentElement.lang = TRANSLATIONS[language].htmlLang;
+    document.title = TRANSLATIONS[language].title;
+  };
+  setDocumentLanguage();
+
   const overlay = document.querySelector<HTMLDivElement>("#loading-overlay");
   await waitForBackend();
   overlay?.remove();
 
   let metadata: Metadata;
   try {
-    metadata = await fetchMetadata();
+    metadata = await fetchMetadata(language);
   } catch (err) {
-    root.innerHTML = `<div class="error">Cannot reach API: ${(err as Error).message}</div>`;
+    root.append(
+      el("div", { class: "error" }, [
+        `${TRANSLATIONS[language].apiError}: ${(err as Error).message}`,
+      ]),
+    );
     return;
   }
 
-  const stats = metadata.feature_stats;
+  const render = () => {
+    setDocumentLanguage();
+    const text = TRANSLATIONS[language];
+    const stats = metadata.feature_stats;
+    root.innerHTML = "";
 
-  const requiredGrid = el("div", { class: "grid" });
-  for (const k of REQUIRED_ELEMENTS) {
-    requiredGrid.append(buildField(k, false, SAMPLE_COMPOSITION[k], stats[k]));
-  }
-
-  const optionalGrid = el("div", { class: "grid" });
-  for (const k of OPTIONAL_ELEMENTS) {
-    optionalGrid.append(buildField(k, true, SAMPLE_COMPOSITION[k], stats[k]));
-  }
-
-  const form = el("form", { id: "composition-form" }, [
-    el("h2", {}, ["Required elements (wt%)"]),
-    requiredGrid,
-    el("h2", {}, ["Optional trace elements (wt%)"]),
-    el("p", { class: "muted" }, [
-      "Leave blank if not measured — the model will treat them as missing.",
-    ]) as HTMLElement,
-    optionalGrid,
-    el("div", { class: "actions" }, [
-      el("button", { type: "submit" }, ["Predict J9 / J15"]),
-      el("button", { type: "button", class: "secondary", id: "btn-sample" }, ["Reset to sample"]),
-    ]) as HTMLElement,
-  ]);
-  (form.querySelector(".muted") as HTMLElement).style.color = "var(--muted)";
-  (form.querySelector(".muted") as HTMLElement).style.fontSize = "0.85rem";
-
-  const formCard = el("div", { class: "card" }, [form]);
-  const resultCard = el("div", { class: "card" }, [
-    el("h2", {}, ["Prediction"]),
-    el("p", { class: "muted" }, ["Submit the form to see predicted hardness."]) as HTMLElement,
-  ]);
-  (resultCard.querySelector(".muted") as HTMLElement).style.color = "var(--muted)";
-
-  const resultBody = el("div", { id: "result-body" });
-  resultCard.append(resultBody);
-
-  root.append(
-    el("header", {}, [
-      el("h1", {}, ["Jominy Hardenability Predictor"]),
-      el("p", {}, [
-        `Predict Rockwell J9 / J15 from steel composition. ` +
-          `Validated on ${metadata.j9_train_rows} specimens, expected MAE ` +
-          `±${metadata.expected_metrics.J9.mae.toFixed(2)} HRC.`,
-      ]),
-    ]),
-    formCard,
-    resultCard,
-    el("footer", {}, [
-      "Model: 0.70·XGBoost + 0.30·PLS for J9, 0.60·XGBoost + 0.40·BayesianRidge for δ. ",
-      el("a", { href: "/docs", target: "_blank" }, ["API docs"]),
-    ]) as HTMLElement,
-  );
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const button = form.querySelector("button[type='submit']") as HTMLButtonElement;
-    button.disabled = true;
-    try {
-      const req = readForm(form as HTMLFormElement);
-      const result = await postPrediction(req);
-      renderResult(resultBody, result);
-    } catch (err) {
-      showError(resultBody, (err as Error).message);
-    } finally {
-      button.disabled = false;
+    const requiredGrid = el("div", { class: "grid" });
+    for (const k of REQUIRED_ELEMENTS) {
+      requiredGrid.append(buildField(k, false, formValues[k], stats[k], language));
     }
-  });
 
-  (form.querySelector("#btn-sample") as HTMLButtonElement).addEventListener("click", () => {
-    fillForm(form as HTMLFormElement, SAMPLE_COMPOSITION);
-  });
+    const optionalGrid = el("div", { class: "grid" });
+    for (const k of OPTIONAL_ELEMENTS) {
+      optionalGrid.append(buildField(k, true, formValues[k], stats[k], language));
+    }
+
+    const languageButton = el("button", {
+      type: "button",
+      class: "language-toggle",
+      id: "btn-language",
+      "aria-label": text.switchAria,
+    }, [text.switchLabel]);
+
+    const form = el("form", { id: "composition-form" }, [
+      el("h2", {}, [text.requiredTitle]),
+      requiredGrid,
+      el("h2", {}, [text.optionalTitle]),
+      el("p", { class: "muted" }, [text.optionalHint]) as HTMLElement,
+      optionalGrid,
+      el("div", { class: "actions" }, [
+        el("button", { type: "submit" }, [text.predictButton]),
+        el("button", { type: "button", class: "secondary", id: "btn-sample" }, [
+          text.resetButton,
+        ]),
+      ]) as HTMLElement,
+    ]);
+
+    const formCard = el("div", { class: "card" }, [form]);
+    const resultBody = el("div", { id: "result-body" });
+    if (lastResult) {
+      renderResult(resultBody, lastResult, language);
+    } else {
+      resultBody.append(el("p", { class: "muted" }, [text.predictionHint]));
+    }
+    const resultCard = el("div", { class: "card" }, [
+      el("h2", {}, [text.predictionTitle]),
+      resultBody,
+    ]);
+
+    root.append(
+      el("header", {}, [
+        el("div", { class: "header-top" }, [
+          el("h1", {}, [text.title]),
+          languageButton,
+        ]),
+        el("p", {}, [
+          text.subtitle(metadata.j9_train_rows, metadata.expected_metrics.J9.mae),
+        ]),
+      ]),
+      formCard,
+      resultCard,
+      el("footer", {}, [
+        text.footerPrefix,
+        el("a", { href: "/docs", target: "_blank" }, [text.apiDocs]),
+      ]) as HTMLElement,
+    );
+
+    languageButton.addEventListener("click", () => {
+      formValues = readFormValues(form as HTMLFormElement);
+      language = language === "zh" ? "en" : "zh";
+      saveLanguage(language);
+      render();
+    });
+
+    form.addEventListener("input", () => {
+      formValues = readFormValues(form as HTMLFormElement);
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      formValues = readFormValues(form as HTMLFormElement);
+      const button = form.querySelector("button[type='submit']") as HTMLButtonElement;
+      button.disabled = true;
+      try {
+        const req = parseComposition(form as HTMLFormElement, language);
+        lastResult = await postPrediction(req, language);
+        render();
+      } catch (err) {
+        showError(resultBody, (err as Error).message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    (form.querySelector("#btn-sample") as HTMLButtonElement).addEventListener("click", () => {
+      formValues = sampleFormValues();
+      lastResult = null;
+      render();
+    });
+  };
+
+  render();
 }
 
 void main();
