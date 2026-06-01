@@ -176,7 +176,7 @@ fn main() {
             .initialization_script(&format!(
                 "window.__JOMINY_API__ = 'http://127.0.0.1:{port}';"
             ))
-            .menu(&menu)
+            .menu(menu)
             .build()?;
 
             // Spawn the backend sidecar
