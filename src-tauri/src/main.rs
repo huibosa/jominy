@@ -205,7 +205,7 @@ fn main() {
             let win = window.clone();
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
-                if !wait_for_port(port, Duration::from_secs(15)) {
+                if !wait_for_port(port, Duration::from_secs(90)) {
                     use tauri_plugin_dialog::DialogExt;
                     app_handle
                         .dialog()
