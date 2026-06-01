@@ -83,6 +83,12 @@ MODELS_DIR = _models_dir()
 
 Use a `_`-prefixed `sys` alias (`import sys as _sys`) when the rest of the module doesn't otherwise use `sys`, to avoid polluting the namespace.
 
+### PyInstaller hidden imports for persisted model artifacts
+
+When a PyInstaller sidecar loads `joblib` / pickle model artifacts, include the modules that define serialized estimator classes in `webapp/backend/main.spec` `hiddenimports`. PyInstaller cannot discover classes that are only referenced inside persisted artifacts.
+
+For the current production blends, the required hidden imports include the sklearn pipeline/transformer/imputer/preprocessing/linear-model modules and the XGBoost sklearn wrapper used by `webapp/models/*.joblib`.
+
 ---
 
 ## Testing Requirements
@@ -90,6 +96,9 @@ Use a `_`-prefixed `sys` alias (`import sys as _sys`) when the rest of the modul
 - Core prediction logic (`Predictor.predict`) must be tested with the reference payload from `webapp/README.md` (`C=0.20, Si=0.26, ...`) — expected `J9 ≈ 35.97, J15 ≈ 29.31`.
 - Both launch modes (`uvicorn main:app` and `python main.py --port PORT`) must return `{"status":"ok"}` from `/api/health` after startup.
 - `Predictor` instantiation must not raise (verifies model file paths resolve correctly in dev mode).
+- After changing `webapp/backend/main.spec`, smoke-test the frozen sidecar executable (`webapp/backend/dist/main/main.exe --host=127.0.0.1 --port <free-port>`) and verify `/api/health` returns `{"status":"ok"}`; a successful PyInstaller build alone is not enough.
+- For Tauri WebView API calls, CORS must allow the actual desktop origin (`http://tauri.localhost` on Windows/Tauri 2, plus the existing dev and legacy origins). Verify with an `Origin: http://tauri.localhost` request when debugging `Failed to fetch`.
+- The release sidecar must be built with `console=False` in `webapp/backend/main.spec` so Windows does not show a separate console window next to the Tauri UI. Rely on `%LOCALAPPDATA%/Jominy/logs/backend.log` for diagnostics instead.
 
 ---
 
@@ -98,4 +107,5 @@ Use a `_`-prefixed `sys` alias (`import sys as _sys`) when the rest of the modul
 - [ ] Any new `sys.*` attribute access uses `getattr(sys, "attr_name")` not `sys.attr_name` if the attribute is not in the stdlib stubs
 - [ ] CLI-only code is inside `if __name__ == "__main__":`
 - [ ] File paths that differ between dev and frozen modes go through a frozen-aware resolver function
+- [ ] Joblib/pickle-loaded model classes are covered by PyInstaller `hiddenimports`
 - [ ] `uv run --with ...` launch still works after the change (no import-time side effects)

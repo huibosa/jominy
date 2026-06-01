@@ -21,9 +21,17 @@ MODELS_DIR  = WEBAPP_ROOT / "models"  # webapp/models/
 # Hidden imports — modules that PyInstaller's static tracer misses
 # ---------------------------------------------------------------------------
 HIDDEN_IMPORTS = [
+    # Classes referenced only by the persisted joblib model artifacts.
+    # PyInstaller cannot discover these from static imports in predictor.py.
+    "sklearn.pipeline",
+    "sklearn.compose._column_transformer",
+    "sklearn.impute._base",
+    "sklearn.preprocessing._data",
+    "sklearn.linear_model._bayes",
+    "xgboost.core",
+    "xgboost.sklearn",
     # sklearn submodules loaded lazily or via importlib
     "sklearn.utils._cython_blas",
-    "sklearn.neighbors._typedefs",
     "sklearn.neighbors._partition_nodes",
     "sklearn.tree._utils",
     "sklearn.cross_decomposition._pls",
@@ -34,8 +42,6 @@ HIDDEN_IMPORTS = [
     # scipy sparse (sklearn dependency)
     "scipy.sparse.csgraph._tools",
     "scipy.special._ufuncs_cxx",
-    # joblib backends
-    "joblib.externals.loky.backend.spawn_main",
     # uvicorn workers/protocols
     "uvicorn.logging",
     "uvicorn.loops.auto",
@@ -102,7 +108,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,       # keep console=True so stderr is visible during CI smoke test
+    console=False,      # desktop sidecar: no extra console window next to the Tauri UI
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
