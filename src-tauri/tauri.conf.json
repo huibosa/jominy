@@ -6,7 +6,7 @@
     "frontendDist": "../webapp/frontend/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "cd ../webapp/frontend && bun run dev",
-    "beforeBuildCommand": "cd ../webapp/frontend && bun run build"
+    "beforeBuildCommand": ""
   },
   "app": {
     "security": {
