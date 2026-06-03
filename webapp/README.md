@@ -23,17 +23,18 @@ webapp/
 ## Setup
 
 ```bash
+# 0. Create/update the repo-local Python environment (.venv)
+uv sync --group backend-build
+
 # 1. Train and persist the production models (writes webapp/models/*.joblib)
-uv run --with pandas,pyarrow,scikit-learn,xgboost,joblib \
-    python webapp/backend/train_models.py
+uv run --group backend-build python webapp/backend/train_models.py
 
 # 2. Build the frontend
 cd webapp/frontend && bun install && bun run build && cd -
 
 # 3. Start the API (serves the built frontend at /)
 cd webapp/backend
-uv run --with fastapi,uvicorn,pandas,pyarrow,scikit-learn,xgboost,joblib \
-    uvicorn main:app --host 127.0.0.1 --port 8000
+uv run --project ../.. --group backend-build uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
 Open <http://127.0.0.1:8000/>. The API docs are at <http://127.0.0.1:8000/docs>.
@@ -47,8 +48,7 @@ On Linux, run the Tauri shell against the Vite dev server:
 ```bash
 # Terminal 1 — FastAPI backend (plain Python, no bundled binary needed)
 cd webapp/backend
-uv run --with fastapi,uvicorn,pandas,pyarrow,scikit-learn,xgboost,joblib \
-    python main.py --port 8000
+uv run --project ../.. --group backend-build python main.py --port 8000
 
 # Terminal 2 — Vite frontend dev server (proxies /api to :8000)
 cd webapp/frontend && bun run dev
@@ -59,6 +59,25 @@ cargo tauri dev
 
 The Tauri window loads `http://localhost:5173`. `window.__JOMINY_API__` is injected to
 `http://127.0.0.1:8000` (dev default). Predictions go through the Vite proxy.
+
+### Local Windows package build
+
+Python build dependencies are managed by uv in the repo-local `.venv` (not installed
+globally):
+
+```powershell
+uv sync --group backend-build
+
+cd webapp/backend
+uv run --project ../.. --group backend-build pyinstaller --clean -y main.spec
+
+cd ../../webapp/frontend
+bun install
+bun run build
+
+cd ../../src-tauri
+cargo tauri build
+```
 
 ### Releasing a Windows installer
 

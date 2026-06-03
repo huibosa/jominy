@@ -4,6 +4,19 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = []
 
+[dependency-groups]
+backend-build = [
+    "fastapi>=0.136.3",
+    "joblib>=1.5.3",
+    "pandas>=3.0.3",
+    "pyarrow>=24.0.0",
+    "pydantic>=2.12.2",
+    "pyinstaller>=6.20.0",
+    "scikit-learn>=1.8.0",
+    "uvicorn>=0.48.0",
+    "xgboost>=3.2.0",
+]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

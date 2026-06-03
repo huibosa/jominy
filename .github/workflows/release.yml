@@ -19,14 +19,15 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Python dependencies + PyInstaller
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller fastapi uvicorn pandas pyarrow scikit-learn xgboost joblib pydantic
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync Python build environment
+        run: uv sync --frozen --group backend-build
 
       - name: Build PyInstaller sidecar
         working-directory: webapp/backend
-        run: pyinstaller main.spec
+        run: uv run --project ../.. --group backend-build pyinstaller main.spec
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2

@@ -6,7 +6,7 @@
 
 ## Overview
 
-Python 3.12, type-checked with Pyright (`basic` mode), run via `uv run --with <deps>`. The backend runs in two modes: imported by uvicorn (`uvicorn main:app`) and launched as a PyInstaller-bundled sidecar (`python main.py --port PORT`). Both paths must be preserved on every change.
+Python 3.12, type-checked with Pyright (`basic` mode). Python build dependencies are managed by uv in the repo-local `.venv`; use the `backend-build` dependency group (`uv sync --group backend-build`, then `uv run --group backend-build ...`). The backend runs in two modes: imported by uvicorn (`uvicorn main:app`) and launched as a PyInstaller-bundled sidecar (`python main.py --port PORT`). Both paths must be preserved on every change.
 
 ---
 
@@ -96,7 +96,7 @@ For the current production blends, the required hidden imports include the sklea
 - Core prediction logic (`Predictor.predict`) must be tested with the reference payload from `webapp/README.md` (`C=0.20, Si=0.26, ...`) — expected `J9 ≈ 35.97, J15 ≈ 29.31`.
 - Both launch modes (`uvicorn main:app` and `python main.py --port PORT`) must return `{"status":"ok"}` from `/api/health` after startup.
 - `Predictor` instantiation must not raise (verifies model file paths resolve correctly in dev mode).
-- After changing `webapp/backend/main.spec`, smoke-test the frozen sidecar executable (`webapp/backend/dist/main/main.exe --host=127.0.0.1 --port <free-port>`) and verify `/api/health` returns `{"status":"ok"}`; a successful PyInstaller build alone is not enough.
+- After changing `webapp/backend/main.spec`, build through uv (`uv run --project ../.. --group backend-build pyinstaller --clean -y main.spec` from `webapp/backend`), then smoke-test the frozen sidecar executable (`webapp/backend/dist/main/main.exe --host=127.0.0.1 --port <free-port>`) and verify `/api/health` returns `{"status":"ok"}`; a successful PyInstaller build alone is not enough.
 - For Tauri WebView API calls, CORS must allow the actual desktop origin (`http://tauri.localhost` on Windows/Tauri 2, plus the existing dev and legacy origins). Verify with an `Origin: http://tauri.localhost` request when debugging `Failed to fetch`.
 - The release sidecar must be built with `console=False` in `webapp/backend/main.spec` so Windows does not show a separate console window next to the Tauri UI. Rely on `%LOCALAPPDATA%/Jominy/logs/backend.log` for diagnostics instead.
 
@@ -108,4 +108,4 @@ For the current production blends, the required hidden imports include the sklea
 - [ ] CLI-only code is inside `if __name__ == "__main__":`
 - [ ] File paths that differ between dev and frozen modes go through a frozen-aware resolver function
 - [ ] Joblib/pickle-loaded model classes are covered by PyInstaller `hiddenimports`
-- [ ] `uv run --with ...` launch still works after the change (no import-time side effects)
+- [ ] `uv run --group backend-build ...` launch still works after the change (no import-time side effects)
