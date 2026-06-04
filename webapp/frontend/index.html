@@ -4,11 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jominy Hardenability Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="loading-overlay">
-      <div class="loading-spinner"></div>
-      <p>正在加载模型&hellip;</p>
+      <div class="loading-crosshair">
+        <span class="loading-crosshair__h"></span>
+        <span class="loading-crosshair__v"></span>
+        <span class="loading-crosshair__dot"></span>
+      </div>
+      <p class="loading-label">CALIBRATING&nbsp;·&nbsp;正在加载模型</p>
     </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>

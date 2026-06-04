@@ -45,3 +45,13 @@ export interface Metadata {
   delta_train_rows: number;
   element_fields: string[];
 }
+
+/** A single row imported from a batch file. */
+export interface BatchSample {
+  id: string;
+  composition: CompositionRequest;
+  /** Pending → loading; settled → either prediction or error. */
+  prediction: PredictionResponse | null;
+  error: string | null;
+  loading: boolean;
+}
