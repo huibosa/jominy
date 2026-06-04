@@ -83,8 +83,8 @@ export const TRANSLATIONS = {
     // Batch
     batchHeading: "批量预测",
     batchHeadingStamp: "BATCH · XLS",
-    dropTitle: "拖入 XLS/XLSX 文件",
-    dropHint: "或点击选择",
+    dropTitle: "点击上传 XLS/XLSX",
+    dropHint: "",
     dropSchema: (cols: string) => `预期表头：${cols}`,
     dropPick: "浏览文件",
     batchFile: (name: string) => name,
@@ -149,8 +149,8 @@ export const TRANSLATIONS = {
     // Batch
     batchHeading: "Batch prediction",
     batchHeadingStamp: "BATCH · XLS",
-    dropTitle: "Drop XLS/XLSX here",
-    dropHint: "or click to browse",
+    dropTitle: "Click to upload XLS/XLSX",
+    dropHint: "",
     dropSchema: (cols: string) => `Expected columns: ${cols}`,
     dropPick: "Browse files",
     batchFile: (name: string) => name,

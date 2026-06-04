@@ -1,14 +1,5 @@
 // Batch prediction page — drop xls/xlsx → single /api/batch SSE stream → table.
 // Sticky-id + sticky-J9/J15 spreadsheet view with sortable hardness columns.
-//
-// Windows / Tauri note
-// --------------------
-// WebView2 (used by Tauri on Windows) fires HTML5 dragover/drop events but
-// leaves dataTransfer.files empty — a known WebView2 limitation.  We work
-// around this by also listening to the native `tauri://drag-drop` window event
-// which does carry the real filesystem paths.  When a path is received we POST
-// it to /api/batch-path and the Python sidecar reads the file directly from
-// disk, reusing the same SSE streaming pipeline.
 
 import type { BatchResponse, BatchSample, BatchSummary, Metadata } from "./types";
 import {
@@ -20,97 +11,6 @@ import {
   isOutOfRange,
 } from "./shared";
 import { BASE } from "./api";
-
-// ---------------------------------------------------------------------------
-// Tauri interop — minimal type surface, no @tauri-apps/api dependency
-// ---------------------------------------------------------------------------
-
-interface TauriDragDropPayload {
-  paths: string[];
-  position: { x: number; y: number };
-}
-
-declare global {
-  interface Window {
-    __TAURI__?: {
-      event: {
-        listen: <T>(
-          event: string,
-          handler: (e: { payload: T }) => void,
-        ) => Promise<() => void>;
-      };
-    };
-  }
-}
-
-function isTauri(): boolean {
-  return typeof window.__TAURI__ !== "undefined";
-}
-
-// Register Tauri drag-drop listeners exactly once per page session.
-// The closures capture the mutable `state` object and the stable `onChange`
-// reference so they stay correct across re-renders without re-registration.
-let _tauriListenersRegistered = false;
-
-function registerTauriDragListeners(
-  state: BatchState,
-  onChange: () => void,
-): void {
-  if (!isTauri() || _tauriListenersRegistered) return;
-  _tauriListenersRegistered = true;
-
-  const listen = window.__TAURI__!.event.listen;
-
-  const addActive = () => {
-    if (state.phase.kind === "empty" || state.phase.kind === "error") {
-      document.querySelector(".dropzone")?.classList.add("is-active");
-    }
-  };
-  const removeActive = () => {
-    document.querySelector(".dropzone")?.classList.remove("is-active");
-  };
-
-  void Promise.all([
-    listen("tauri://drag-enter", addActive),
-    listen("tauri://drag-over", addActive),
-    listen("tauri://drag-leave", removeActive),
-    listen<TauriDragDropPayload>("tauri://drag-drop", (e) => {
-      removeActive();
-      // Only accept drops when the dropzone is actually visible.
-      if (state.phase.kind !== "empty" && state.phase.kind !== "error") return;
-      const path = e.payload.paths?.[0];
-      if (path) void handleFileByPath(path, state, onChange);
-    }),
-  ]);
-}
-
-async function handleFileByPath(
-  path: string,
-  state: BatchState,
-  onChange: () => void,
-): Promise<void> {
-  const fileName = path.replace(/\\/g, "/").split("/").pop() ?? path;
-  state.phase = { kind: "loading", fileName, total: 0, done: 0 };
-  onChange();
-
-  try {
-    const res = await fetch(`${BASE}/api/batch-path`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path }),
-    });
-    if (!res.ok) {
-      const detail = await res.text();
-      state.phase = { kind: "error", message: detail || `HTTP ${res.status}` };
-      onChange();
-      return;
-    }
-    await readBatchStream(res, state, onChange);
-  } catch (err) {
-    state.phase = { kind: "error", message: (err as Error).message };
-    onChange();
-  }
-}
 
 type SortKey = "J9" | "J15" | null;
 type SortDir = "asc" | "desc";
@@ -288,7 +188,6 @@ function buildDropzone(
       el("span", { class: "crosshair__dot" }),
     ]),
     el("h3", { class: "dropzone__title" }, [text.dropTitle]),
-    el("p", { class: "dropzone__hint" }, [text.dropHint]),
     el("p", { class: "dropzone__schema" }, [
       text.dropSchema(`炉号/lh, ${ALL_ELEMENTS.join(", ")}`),
     ]),
@@ -339,15 +238,9 @@ function buildDropzone(
   dropzone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropzone.classList.remove("is-active");
-    // dataTransfer.files is empty in Tauri/WebView2 on Windows; the native
-    // tauri://drag-drop listener (registered below) handles that path instead.
     const file = (e as DragEvent).dataTransfer?.files?.[0];
     if (file) void handleFile(file);
   });
-
-  // On Windows the Tauri WebView2 does not populate dataTransfer.files.
-  // Register native Tauri drag-drop listeners as a fallback (no-op in browser).
-  registerTauriDragListeners(state, onChange);
 
   if (errorMsg) {
     const banner = el("div", { class: "batch-error-banner" }, [
