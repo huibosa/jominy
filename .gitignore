@@ -38,8 +38,6 @@ Thumbs.db
 *.swo
 
 # Trellis internals (do not track; workspace/tasks/spec ARE tracked)
-.trellis/.backup-*/
-.trellis/worktrees/
-.trellis/.template-hashes.json
-.trellis/.runtime/
-.trellis/.cache/
+.trellis
+data/
+.claude
