@@ -118,10 +118,6 @@ class BatchResponse(BaseModel):
     samples: list[BatchSample]
 
 
-class BatchPathRequest(BaseModel):
-    path: str
-
-
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
@@ -186,13 +182,19 @@ def predict(req: CompositionRequest) -> PredictionResponse:
     return PredictionResponse(**result)
 
 
-def _make_batch_stream(content: bytes, filename: str, pred: Predictor) -> StreamingResponse:
-    """Parse *content* and return an SSE StreamingResponse.
+@app.post("/api/batch")
+async def batch(file: UploadFile = File(...)) -> StreamingResponse:
+    """Parse an XLS/XLSX file and stream predictions as Server-Sent Events.
 
-    Raises HTTPException (400/413/415) synchronously when the file is
-    unreadable so callers get a proper HTTP error before streaming begins.
-    All per-row errors are emitted as SSE ``type:error`` events mid-stream.
+    SSE event sequence:
+      data: {"type":"start",  "filename":str, "total":int, "deduped":int}
+      data: {"type":"progress","done":int, "total":int}   (repeated)
+      data: {"type":"done",   "filename":str, "summary":{...}, "samples":[...]}
+
+    On error before streaming starts: HTTP 400 / 415.
+    On error mid-stream: data: {"type":"error","message":str}
     """
+    content = await file.read()
     if len(content) > MAX_BATCH_BYTES:
         raise HTTPException(413, "file too large (max 20 MB)")
 
@@ -213,6 +215,9 @@ def _make_batch_stream(content: bytes, filename: str, pred: Predictor) -> Stream
         raise HTTPException(400, f"could not parse file: {exc}") from exc
 
     rows, deduped_count = deduplicate_rows(all_rows)
+    filename = file.filename or "batch"
+    pred: Predictor = app.state.predictor
+
     non_empty = [r for r in rows if r.status != "empty"]
     skipped_empty = len(rows) - len(non_empty)
     total = len(non_empty)
@@ -297,42 +302,6 @@ def _make_batch_stream(content: bytes, filename: str, pred: Predictor) -> Stream
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-@app.post("/api/batch")
-async def batch(file: UploadFile = File(...)) -> StreamingResponse:
-    """Parse an XLS/XLSX file and stream predictions as Server-Sent Events.
-
-    SSE event sequence:
-      data: {"type":"start",  "filename":str, "total":int, "deduped":int}
-      data: {"type":"progress","done":int, "total":int}   (repeated)
-      data: {"type":"done",   "filename":str, "summary":{...}, "samples":[...]}
-
-    On error before streaming starts: HTTP 400 / 415.
-    On error mid-stream: data: {"type":"error","message":str}
-    """
-    content = await file.read()
-    filename = file.filename or "batch"
-    pred: Predictor = app.state.predictor
-    return _make_batch_stream(content, filename, pred)
-
-
-@app.post("/api/batch-path")
-async def batch_path(req: BatchPathRequest) -> StreamingResponse:
-    """Same as /api/batch but reads the XLS/XLSX from a local filesystem path.
-
-    Used by the Tauri desktop build on Windows: WebView2 fires HTML5 drag-drop
-    events but leaves dataTransfer.files empty, so the frontend falls back to
-    the native ``tauri://drag-drop`` event (which provides real file paths) and
-    POSTs the path here instead of uploading the raw bytes.
-    """
-    try:
-        content = Path(req.path).read_bytes()
-    except OSError as exc:
-        raise HTTPException(400, f"could not read file: {exc}") from exc
-    filename = Path(req.path).name
-    pred: Predictor = app.state.predictor
-    return _make_batch_stream(content, filename, pred)
 
 
 # ---------------------------------------------------------------------------
