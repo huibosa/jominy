@@ -63,7 +63,7 @@ export const TRANSLATIONS = {
     typicalRange: (low: number, high: number) => `${low.toFixed(3)}–${high.toFixed(3)}`,
     predictButton: "运行预测",
     resetButton: "恢复示例",
-    predictionTitle: "硬度读数",
+    predictionTitle: "硬度预测",
     predictionStamp: "OUTPUT · HRC",
     predictionHint: "提交化学成分以查看预测硬度。",
     expectedMae: (j9: number, delta: number) =>
@@ -129,7 +129,7 @@ export const TRANSLATIONS = {
     typicalRange: (low: number, high: number) => `${low.toFixed(3)}–${high.toFixed(3)}`,
     predictButton: "Run prediction",
     resetButton: "Reset to sample",
-    predictionTitle: "Hardness readout",
+    predictionTitle: "Hardness prediction",
     predictionStamp: "OUTPUT · HRC",
     predictionHint: "Submit composition to see predicted hardness.",
     expectedMae: (j9: number, delta: number) =>

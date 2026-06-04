@@ -405,7 +405,7 @@ body::before {
 
 .field__name {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   color: rgba(0, 0, 0, 0.55);
@@ -448,12 +448,6 @@ body::before {
   margin: 0;
 }
 
-.field__range {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: rgba(0, 0, 0, 0.45);
-}
 
 /* ------------------------------------------------------------
    Buttons
