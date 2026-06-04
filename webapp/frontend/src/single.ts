@@ -269,9 +269,10 @@ export function renderSingle(
   root.append(el("div", { class: "single-grid" }, [formCard, resultSlab]));
 
   // ----- Wiring -----
+  // Persist values into state on every keystroke, but DO NOT trigger a re-render —
+  // re-rendering would clobber the focused input and make typing impossible.
   form.addEventListener("input", () => {
     state.formValues = readFormValues(form as HTMLFormElement);
-    onChange();
   });
 
   form.addEventListener("submit", async (event) => {

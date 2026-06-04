@@ -435,6 +435,19 @@ body::before {
   color: rgba(0, 0, 0, 0.25);
 }
 
+/* Hide the native number-input spinner buttons in every browser. */
+.field input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.field input[type="number"]::-webkit-outer-spin-button,
+.field input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
 .field__range {
   font-family: var(--font-mono);
   font-size: 10px;
