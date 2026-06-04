@@ -1,16 +1,25 @@
 // Shared building blocks for the app shell — element lists, language store,
 // translations, tiny DOM helpers, API base.
 
-import type { CompositionRequest, FeatureStat, Metadata, PredictionResponse } from "./types";
+import type { CompositionRequest, ElementKey, FeatureStat, Metadata, PredictionResponse } from "./types";
 import { BASE } from "./api";
 
-export const REQUIRED_ELEMENTS = ["C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr"] as const;
-export const OPTIONAL_ELEMENTS = ["V", "Ti", "W", "Al", "B"] as const;
+// Re-export ElementKey so existing consumers (`import { ElementKey } from "./shared"`)
+// keep working without churn. types.ts is the authoritative source.
+export type { ElementKey };
+
+export const REQUIRED_ELEMENTS = [
+  "C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr",
+] as const satisfies readonly ElementKey[];
+
+export const OPTIONAL_ELEMENTS = [
+  "V", "Ti", "W", "Al", "B",
+] as const satisfies readonly ElementKey[];
+
 export const ALL_ELEMENTS = [...REQUIRED_ELEMENTS, ...OPTIONAL_ELEMENTS] as const;
 
 export type RequiredKey = (typeof REQUIRED_ELEMENTS)[number];
 export type OptionalKey = (typeof OPTIONAL_ELEMENTS)[number];
-export type ElementKey = RequiredKey | OptionalKey;
 export type Language = "zh" | "en";
 
 const LANGUAGE_STORAGE_KEY = "jominy-language";
@@ -73,16 +82,23 @@ export const TRANSLATIONS = {
     apiDocs: "API 文档",
     // Batch
     batchHeading: "批量预测",
-    batchHeadingStamp: "BATCH · XLSX",
-    dropTitle: "拖入 XLSX 文件",
+    batchHeadingStamp: "BATCH · XLS",
+    dropTitle: "拖入 XLS/XLSX 文件",
     dropHint: "或点击选择",
     dropSchema: (cols: string) => `预期表头：${cols}`,
     dropPick: "浏览文件",
     batchFile: (name: string) => name,
-    batchCount: (n: number) => `${n} 个样本`,
-    batchExport: "导出 XLSX",
+    batchExport: "导出 CSV",
     batchClear: "清除",
+    batchPredicting: "正在预测…",
+    batchOk: "OK",
+    batchInsuf: "INSUF",
+    batchSkipped: "SKIPPED",
+    batchDedup: "去重",
+    batchErr: "ERR",
+    batchUploadError: (msg: string) => `上传失败：${msg}`,
     colId: "炉号 / ID",
+    colGrade: "钢号",
     colJ9: "J9",
     colJ15: "J15",
     distance9: "9 mm",
@@ -132,16 +148,23 @@ export const TRANSLATIONS = {
     apiDocs: "API docs",
     // Batch
     batchHeading: "Batch prediction",
-    batchHeadingStamp: "BATCH · XLSX",
-    dropTitle: "Drop XLSX here",
+    batchHeadingStamp: "BATCH · XLS",
+    dropTitle: "Drop XLS/XLSX here",
     dropHint: "or click to browse",
     dropSchema: (cols: string) => `Expected columns: ${cols}`,
     dropPick: "Browse files",
     batchFile: (name: string) => name,
-    batchCount: (n: number) => `${n} samples`,
-    batchExport: "Export XLSX",
+    batchExport: "Export CSV",
     batchClear: "Clear",
+    batchPredicting: "Predicting…",
+    batchOk: "OK",
+    batchInsuf: "INSUF",
+    batchSkipped: "SKIPPED",
+    batchDedup: "DEDUP",
+    batchErr: "ERR",
+    batchUploadError: (msg: string) => `Upload failed: ${msg}`,
     colId: "Heat / ID",
+    colGrade: "Grade",
     colJ9: "J9",
     colJ15: "J15",
     distance9: "9 mm",

@@ -46,12 +46,37 @@ export interface Metadata {
   element_fields: string[];
 }
 
-/** A single row imported from a batch file. */
+// Authoritative source for ElementKey — shared.ts imports and re-exports this.
+export type ElementKey =
+  | "C" | "Si" | "Mn" | "P" | "S" | "Cu" | "Ni" | "Cr"
+  | "V" | "Ti" | "W" | "Al" | "B";
+
+export type BatchStatus = "ok" | "insufficient" | "error";
+
 export interface BatchSample {
   id: string;
-  composition: CompositionRequest;
-  /** Pending → loading; settled → either prediction or error. */
+  id_synthesized: boolean;
+  grade: string | null;
+  // Record (not Partial<CompositionRequest>) so cells are `number | null`
+  // never `undefined` under strict TS.
+  composition: Record<ElementKey, number | null>;
+  missing_required: string[];
+  status: BatchStatus;
   prediction: PredictionResponse | null;
   error: string | null;
-  loading: boolean;
+}
+
+export interface BatchSummary {
+  total_rows: number;
+  deduped: number;
+  skipped_empty: number;
+  predicted: number;
+  insufficient: number;
+  errored: number;
+}
+
+export interface BatchResponse {
+  filename: string;
+  summary: BatchSummary;
+  samples: BatchSample[];
 }

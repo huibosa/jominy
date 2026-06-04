@@ -48,6 +48,15 @@ HIDDEN_IMPORTS = [
     "uvicorn.protocols.http.auto",
     "uvicorn.protocols.websockets.auto",
     "uvicorn.lifespan.on",
+    # Batch file parsing
+    "openpyxl",
+    "openpyxl.styles",
+    "openpyxl.reader.excel",
+    "xlrd",
+    "lxml",
+    "lxml.etree",
+    "lxml.html",
+    "multipart",
 ]
 
 # ---------------------------------------------------------------------------
@@ -87,7 +96,6 @@ a = Analysis(
         "IPython",
         "jupyter",
         "notebook",
-        "openpyxl",
         "pyarrow",
     ],
     win_no_prefer_redirects=False,

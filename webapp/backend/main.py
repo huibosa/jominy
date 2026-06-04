@@ -1,20 +1,31 @@
 """FastAPI entrypoint for the Jominy hardenability predictor."""
 from __future__ import annotations
 
+import asyncio
+import json as _json
 import logging
 import os
 import sys
 from contextlib import asynccontextmanager
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
+from batch import (
+    ParseError,
+    UnsupportedFormatError,
+    deduplicate_rows,
+    detect_format,
+    normalize_columns,
+    parse_rows,
+    read_dataframe,
+)
 from predictor import Predictor
 
 
@@ -40,7 +51,14 @@ WEBAPP_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_DIST = WEBAPP_ROOT / "frontend" / "dist"
 
 ELEMENT_FIELDS = ["C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr", "V", "Ti", "W", "Al", "B"]
+REQUIRED_KEYS = {"C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr"}
 
+MAX_BATCH_BYTES = 20 * 1024 * 1024  # 20 MB hard cap
+
+
+# ---------------------------------------------------------------------------
+# Pydantic models — single predict
+# ---------------------------------------------------------------------------
 
 class CompositionRequest(BaseModel):
     C: Annotated[float, Field(ge=0, le=2.0, description="Carbon, wt%")]
@@ -66,6 +84,43 @@ class PredictionResponse(BaseModel):
     warnings: list[str] = Field(description="Out-of-range input warnings")
     expected_mae: dict[str, float] = Field(description="Expected mean absolute error from cross-validation")
 
+
+# ---------------------------------------------------------------------------
+# Pydantic models — batch
+# ---------------------------------------------------------------------------
+
+BatchStatus = Literal["ok", "insufficient", "error"]
+
+
+class BatchSample(BaseModel):
+    id: str
+    id_synthesized: bool = False
+    grade: str | None = None
+    composition: dict[str, float | None]    # 13 keys, None where missing
+    missing_required: list[str]
+    status: BatchStatus
+    prediction: PredictionResponse | None
+    error: str | None
+
+
+class BatchSummary(BaseModel):
+    total_rows: int       # raw spreadsheet rows (before dedup)
+    deduped: int          # rows removed as duplicate 炉号
+    skipped_empty: int    # all-NaN chemistry rows, dropped silently
+    predicted: int        # status == "ok"
+    insufficient: int
+    errored: int
+
+
+class BatchResponse(BaseModel):
+    filename: str
+    summary: BatchSummary
+    samples: list[BatchSample]
+
+
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,6 +150,10 @@ app.add_middleware(
 )
 
 
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -122,6 +181,132 @@ def predict(req: CompositionRequest) -> PredictionResponse:
         raise HTTPException(status_code=500, detail=f"prediction failed: {exc}") from exc
     return PredictionResponse(**result)
 
+
+@app.post("/api/batch")
+async def batch(file: UploadFile = File(...)) -> StreamingResponse:
+    """Parse an XLS/XLSX file and stream predictions as Server-Sent Events.
+
+    SSE event sequence:
+      data: {"type":"start",  "filename":str, "total":int, "deduped":int}
+      data: {"type":"progress","done":int, "total":int}   (repeated)
+      data: {"type":"done",   "filename":str, "summary":{...}, "samples":[...]}
+
+    On error before streaming starts: HTTP 400 / 415.
+    On error mid-stream: data: {"type":"error","message":str}
+    """
+    content = await file.read()
+    if len(content) > MAX_BATCH_BYTES:
+        raise HTTPException(413, "file too large (max 20 MB)")
+
+    try:
+        fmt = detect_format(content[:64])
+    except UnsupportedFormatError as exc:
+        raise HTTPException(415, str(exc))
+
+    try:
+        df = read_dataframe(content, fmt)
+        mapping = normalize_columns(df)
+        all_rows = parse_rows(df, mapping)
+        if all_rows and all(r.status == "empty" for r in all_rows):
+            raise ParseError("file contains no usable data rows")
+    except ParseError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        raise HTTPException(400, f"could not parse file: {exc}") from exc
+
+    rows, deduped_count = deduplicate_rows(all_rows)
+    filename = file.filename or "batch"
+    pred: Predictor = app.state.predictor
+
+    non_empty = [r for r in rows if r.status != "empty"]
+    skipped_empty = len(rows) - len(non_empty)
+    total = len(non_empty)
+
+    async def generate():
+        # start — announce total work so the client can render a progress bar
+        yield f"data: {_json.dumps({'type':'start','filename':filename,'total':total,'deduped':deduped_count})}\n\n"
+
+        summary_counts = {
+            "total_rows": len(all_rows),
+            "deduped": deduped_count,
+            "skipped_empty": skipped_empty,
+            "predicted": 0,
+            "insufficient": 0,
+            "errored": 0,
+        }
+        samples: list[dict] = []
+        # Emit ~100 progress events at most (never less than every row).
+        interval = max(1, total // 100)
+
+        try:
+            for i, r in enumerate(non_empty):
+                if r.status == "insufficient":
+                    summary_counts["insufficient"] += 1
+                    sample = BatchSample(
+                        id=r.id, id_synthesized=r.id_synthesized, grade=r.grade,
+                        composition=r.composition,
+                        missing_required=r.missing_required,
+                        status="insufficient", prediction=None, error=None,
+                    )
+                else:
+                    try:
+                        req_data = {
+                            k: v for k, v in r.composition.items()
+                            if v is not None or k in REQUIRED_KEYS
+                        }
+                        comp_req = CompositionRequest(**req_data)
+                    except ValidationError as exc:
+                        summary_counts["errored"] += 1
+                        sample = BatchSample(
+                            id=r.id, id_synthesized=r.id_synthesized, grade=r.grade,
+                            composition=r.composition, missing_required=[],
+                            status="error", prediction=None,
+                            error=f"invalid value: {exc.errors()[0]['msg']}",
+                        )
+                    else:
+                        try:
+                            result = pred.predict(comp_req.model_dump())
+                            summary_counts["predicted"] += 1
+                            sample = BatchSample(
+                                id=r.id, id_synthesized=r.id_synthesized, grade=r.grade,
+                                composition=r.composition, missing_required=[],
+                                status="ok",
+                                prediction=PredictionResponse(**result), error=None,
+                            )
+                        except Exception as exc:
+                            summary_counts["errored"] += 1
+                            sample = BatchSample(
+                                id=r.id, id_synthesized=r.id_synthesized, grade=r.grade,
+                                composition=r.composition, missing_required=[],
+                                status="error", prediction=None, error=str(exc),
+                            )
+
+                samples.append(sample.model_dump())
+
+                done = i + 1
+                if done % interval == 0 or done == total:
+                    yield f"data: {_json.dumps({'type':'progress','done':done,'total':total})}\n\n"
+                    # Yield to the asyncio runloop so uvicorn actually flushes
+                    # the chunk to the client; without this the synchronous
+                    # predictor.predict loop starves the event loop and the
+                    # browser receives all events at once at the end.
+                    await asyncio.sleep(0)
+
+            yield f"data: {_json.dumps({'type':'done','filename':filename,'summary':summary_counts,'samples':samples})}\n\n"
+
+        except Exception as exc:
+            yield f"data: {_json.dumps({'type':'error','message':str(exc)})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Frontend serving
+# ---------------------------------------------------------------------------
 
 # Serve the built frontend at /. If the frontend hasn't been built yet,
 # the routes return a friendly message instead of 500.

@@ -8,13 +8,17 @@ dependencies = []
 backend-build = [
     "fastapi>=0.136.3",
     "joblib>=1.5.3",
+    "lxml>=5.2.0",
+    "openpyxl>=3.1.0",
     "pandas>=3.0.3",
     "pyarrow>=24.0.0",
     "pydantic>=2.12.2",
     "pyinstaller>=6.20.0",
+    "python-multipart>=0.0.9",
     "scikit-learn>=1.8.0",
     "uvicorn>=0.48.0",
     "xgboost>=3.2.0",
+    "xlrd>=2.0.1",
 ]
 
 [tool.pytest.ini_options]
