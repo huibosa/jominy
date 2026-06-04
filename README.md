@@ -34,6 +34,28 @@ R²(delta) ≈ 0 confirms the J9–J15 spread cannot be predicted from chemistry
 
 See [HISTORY.md](HISTORY.md) for the full experiment log (230+ runs across linear, kernel, tree, MLP, stacking, and blend families).
 
+## Empirical formula benchmark
+
+Sheet 1 formulas from `data/empirical-formula.xlsx` were benchmarked against the current best blend on the same saved 5-fold `GroupKFold` splits. The benchmark evaluates D20/D21 (J9/J15) and F20 (J9 only), with fold-safe Ni median imputation and Mo sensitivity.
+
+Headline full-scope results:
+
+| Candidate | J9 MAE | J15 MAE | Notes |
+|-----------|-------:|--------:|-------|
+| `blend_xgb_pls3_w0.70` | **1.7106** | **1.9516** | Current best model; retrained per fold for J9 + delta → J15 |
+| `ridge_full` | 1.7773 | 1.9940 | Full-feature ridge baseline |
+| Best Sheet 1 J9 formula (`F20`, Ni fold-median, Mo = 0.00) | 2.3082 | – | J9-only formula |
+| Best Sheet 1 D20/D21 formula (Ni fold-median, Mo = 0.00) | 2.3521 | 3.7305 | D20 for J9, D21 for J15 |
+
+Conclusion: the empirical formulas are useful literature baselines, but they substantially underperform the learned models on this cleaned dataset. The retrained blend reproduced the stored J9 OOF predictions exactly at fold-metric level (`max |ΔMAE| = 0.000000` HRC).
+
+Detailed outputs:
+
+- `scripts/run_empirical_formula_benchmark.py`
+- `output/modeling/metrics/empirical_formula_per_fold.csv`
+- `output/modeling/metrics/empirical_formula_monotonicity.csv`
+- `output/modeling/reports/empirical_formula_comparison.md`
+
 ## Data
 
 ### Raw (`data/`)
@@ -73,12 +95,13 @@ data/*.xlsx
                   └─ data/modeling/{j9,delta,specimen}_*.parquet
                        ├─ scripts/run_baselines.py        ← baseline reference (Ridge, mean)
                        ├─ scripts/run_model_comparison.py ← Task-5 challenger comparison
+                       ├─ scripts/run_empirical_formula_benchmark.py
                        ├─ scripts/run_robustness_checks.py
                        ├─ scripts/select_final_model.py
                        └─ scripts/model_experiments*.py   ← this work (rounds 1-7)
 ```
 
-The `scripts/model_experiments*.py` runners append every candidate to `HISTORY.md`. The current production export still ships the fixed-v1 PLS / Ridge from `select_final_model.py`; promoting the blend requires updating that script and the J15 reconstruction in `assemble_pair_predictions`.
+The `scripts/model_experiments*.py` runners append every candidate to `HISTORY.md`. The desktop webapp export is trained by `webapp/backend/train_models.py` and persists the blend under `webapp/models/`; `select_final_model.py` remains the older fixed-v1 benchmark/export path.
 
 ## Reproduce
 
@@ -107,6 +130,10 @@ uv run --with pandas,pyarrow,scikit-learn,xgboost,lightgbm \
 # 5. Inspect winner OOF predictions
 uv run --with pandas,pyarrow,scikit-learn,xgboost \
     scripts/inspect_winner.py
+
+# 6. Empirical formula benchmark
+uv run --with pandas,pyarrow,scikit-learn,xgboost \
+    scripts/run_empirical_formula_benchmark.py
 ```
 
 ## Layout
