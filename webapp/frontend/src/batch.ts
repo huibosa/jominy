@@ -12,7 +12,7 @@ import {
 } from "./shared";
 import { BASE } from "./api";
 
-type SortKey = "J9" | "J15" | null;
+type SortKey = "J9" | "J15" | "id" | "grade" | null;
 type SortDir = "asc" | "desc";
 
 export type BatchPhase =
@@ -286,35 +286,39 @@ function buildLoadingView(
 // Table helpers
 // ---------------------------------------------------------------------------
 
+function makeSortTh(
+  cls: string,
+  label: string,
+  sortKey: SortKey,
+  state: BatchState,
+  onSort: (key: SortKey) => void,
+): HTMLElement {
+  const marker = state.sortKey === sortKey ? (state.sortDir === "asc" ? "▲" : "▼") : "↕";
+  const th = el("th", { class: `${cls} sortable` }, [
+    label,
+    el("span", { class: "sort-marker" }, [marker]),
+  ]);
+  if (state.sortKey === sortKey) {
+    th.setAttribute("aria-sort", state.sortDir === "asc" ? "ascending" : "descending");
+  }
+  th.addEventListener("click", () => onSort(sortKey));
+  return th;
+}
+
 function buildHeader(language: Language, state: BatchState, onSort: (key: SortKey) => void): HTMLElement {
   const text = TRANSLATIONS[language];
   const tr = el("tr", {}, []);
 
-  tr.append(el("th", { class: "col-id" }, [text.colId]));
-  tr.append(el("th", { class: "col-grade" }, [text.colGrade]));
+  tr.append(makeSortTh("col-id", text.colId, "id", state, onSort));
+  tr.append(makeSortTh("col-grade", text.colGrade, "grade", state, onSort));
 
   for (const k of ALL_ELEMENTS) {
     tr.append(el("th", { class: "col-element" }, [k]));
   }
 
-  const j9Marker = state.sortKey === "J9" ? (state.sortDir === "asc" ? "▲" : "▼") : "↕";
-  const j15Marker = state.sortKey === "J15" ? (state.sortDir === "asc" ? "▲" : "▼") : "↕";
+  tr.append(makeSortTh("col-j9", text.colJ9, "J9", state, onSort));
+  tr.append(makeSortTh("col-j15", text.colJ15, "J15", state, onSort));
 
-  const j9 = el("th", { class: "col-j9 sortable" }, [
-    text.colJ9,
-    el("span", { class: "sort-marker" }, [j9Marker]),
-  ]);
-  if (state.sortKey === "J9") j9.setAttribute("aria-sort", state.sortDir === "asc" ? "ascending" : "descending");
-  j9.addEventListener("click", () => onSort("J9"));
-
-  const j15 = el("th", { class: "col-j15 sortable" }, [
-    text.colJ15,
-    el("span", { class: "sort-marker" }, [j15Marker]),
-  ]);
-  if (state.sortKey === "J15") j15.setAttribute("aria-sort", state.sortDir === "asc" ? "ascending" : "descending");
-  j15.addEventListener("click", () => onSort("J15"));
-
-  tr.append(j9, j15);
   return tr;
 }
 
@@ -399,7 +403,17 @@ function sortedSamples(samples: BatchSample[], state: BatchState): BatchSample[]
   }
 
   groups.sort((ga, gb) => {
-    // Sort by the best (most informative) prediction in the group.
+    const a = ga[0]; // representative (INSUF or regular) row for the group
+    const b = gb[0];
+
+    if (key === "id") {
+      return a.id.localeCompare(b.id) * dir;
+    }
+    if (key === "grade") {
+      return (a.grade ?? "").localeCompare(b.grade ?? "") * dir;
+    }
+
+    // Numeric sort: J9 or J15 — use best prediction in the group.
     // std_fill rows carry a prediction; bare INSUF rows do not.
     const av = ga.find((s) => s.prediction)?.prediction?.[key] ?? null;
     const bv = gb.find((s) => s.prediction)?.prediction?.[key] ?? null;
