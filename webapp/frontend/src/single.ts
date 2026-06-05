@@ -40,6 +40,14 @@ function sampleFormValues(): FormValues {
   ) as FormValues;
 }
 
+/** Return the appropriate step for a numeric input based on the element's typical range.
+ *  Elements whose p99 sits below 0.001 (e.g. B: p99=0.0005) need 4-decimal-place
+ *  granularity; everything else is fine at 3 decimal places. */
+function elementStep(stat: FeatureStat | undefined): string {
+  if (stat?.p99 !== undefined && stat.p99 < 0.001) return "0.0001";
+  return "0.001";
+}
+
 function buildField(
   key: ElementKey,
   optional: boolean,
@@ -51,7 +59,7 @@ function buildField(
   const input = el("input", {
     type: "number",
     name: key,
-    step: "0.001",
+    step: elementStep(stat),
     min: "0",
     placeholder: optional ? "—" : "",
     "data-key": key,
