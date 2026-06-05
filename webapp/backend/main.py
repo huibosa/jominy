@@ -27,6 +27,7 @@ from batch import (
     read_dataframe,
 )
 from predictor import Predictor
+from standards import grade_lookup
 
 
 def _configure_sidecar_logging() -> None:
@@ -89,7 +90,7 @@ class PredictionResponse(BaseModel):
 # Pydantic models — batch
 # ---------------------------------------------------------------------------
 
-BatchStatus = Literal["ok", "insufficient", "error"]
+BatchStatus = Literal["ok", "insufficient", "error", "std_fill"]
 
 
 class BatchSample(BaseModel):
@@ -98,6 +99,7 @@ class BatchSample(BaseModel):
     grade: str | None = None
     composition: dict[str, float | None]    # 13 keys, None where missing
     missing_required: list[str]
+    filled_elements: list[str] = []         # elements filled from GB standard (std_fill rows only)
     status: BatchStatus
     prediction: PredictionResponse | None
     error: str | None
@@ -109,6 +111,7 @@ class BatchSummary(BaseModel):
     skipped_empty: int    # all-NaN chemistry rows, dropped silently
     predicted: int        # status == "ok"
     insufficient: int
+    std_fill: int         # GB-standard-filled companion rows
     errored: int
 
 
@@ -232,6 +235,7 @@ async def batch(file: UploadFile = File(...)) -> StreamingResponse:
             "skipped_empty": skipped_empty,
             "predicted": 0,
             "insufficient": 0,
+            "std_fill": 0,
             "errored": 0,
         }
         samples: list[dict] = []
@@ -240,6 +244,8 @@ async def batch(file: UploadFile = File(...)) -> StreamingResponse:
 
         try:
             for i, r in enumerate(non_empty):
+                std_companion: BatchSample | None = None
+
                 if r.status == "insufficient":
                     summary_counts["insufficient"] += 1
                     sample = BatchSample(
@@ -248,6 +254,39 @@ async def batch(file: UploadFile = File(...)) -> StreamingResponse:
                         missing_required=r.missing_required,
                         status="insufficient", prediction=None, error=None,
                     )
+
+                    # Build a GB-standard-filled companion row when grade is known.
+                    if r.grade:
+                        std_vals = grade_lookup(r.grade)
+                        if std_vals:
+                            filled_comp: dict[str, float | None] = dict(r.composition)
+                            filled: list[str] = []
+                            for elem, std_val in std_vals.items():
+                                if filled_comp.get(elem) is None:
+                                    filled_comp[elem] = std_val
+                                    filled.append(elem)
+                            if filled:
+                                req_data = {
+                                    k: v for k, v in filled_comp.items()
+                                    if v is not None or k in REQUIRED_KEYS
+                                }
+                                try:
+                                    comp_req = CompositionRequest(**req_data)
+                                    result = pred.predict(comp_req.model_dump())
+                                    summary_counts["std_fill"] += 1
+                                    std_companion = BatchSample(
+                                        id=f"{r.id} (GB)",
+                                        id_synthesized=r.id_synthesized,
+                                        grade=r.grade,
+                                        composition={k: filled_comp.get(k) for k in ELEMENT_FIELDS},
+                                        missing_required=[],
+                                        filled_elements=filled,
+                                        status="std_fill",
+                                        prediction=PredictionResponse(**result),
+                                        error=None,
+                                    )
+                                except Exception:
+                                    pass  # silently skip if validation or prediction fails
                 else:
                     try:
                         req_data = {
@@ -282,6 +321,8 @@ async def batch(file: UploadFile = File(...)) -> StreamingResponse:
                             )
 
                 samples.append(sample.model_dump())
+                if std_companion is not None:
+                    samples.append(std_companion.model_dump())
 
                 done = i + 1
                 if done % interval == 0 or done == total:

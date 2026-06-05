@@ -51,7 +51,7 @@ export type ElementKey =
   | "C" | "Si" | "Mn" | "P" | "S" | "Cu" | "Ni" | "Cr"
   | "V" | "Ti" | "W" | "Al" | "B";
 
-export type BatchStatus = "ok" | "insufficient" | "error";
+export type BatchStatus = "ok" | "insufficient" | "error" | "std_fill";
 
 export interface BatchSample {
   id: string;
@@ -61,6 +61,8 @@ export interface BatchSample {
   // never `undefined` under strict TS.
   composition: Record<ElementKey, number | null>;
   missing_required: string[];
+  /** Elements whose values were filled from the GB national standard (std_fill rows only). */
+  filled_elements: string[];
   status: BatchStatus;
   prediction: PredictionResponse | null;
   error: string | null;
@@ -72,6 +74,7 @@ export interface BatchSummary {
   skipped_empty: number;
   predicted: number;
   insufficient: number;
+  std_fill: number;
   errored: number;
 }
 

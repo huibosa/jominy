@@ -321,8 +321,14 @@ function buildHeader(language: Language, state: BatchState, onSort: (key: SortKe
 function buildRow(sample: BatchSample, metadata: Metadata): HTMLElement {
   const stats = metadata.feature_stats;
   const isInsuf = sample.status === "insufficient";
+  const isStdFill = sample.status === "std_fill";
   const isErr = sample.status === "error";
-  const tr = el("tr", { "data-id": sample.id, class: isInsuf ? "row-insufficient" : "" }, []);
+
+  let rowClass = "";
+  if (isInsuf) rowClass = "row-insufficient";
+  else if (isStdFill) rowClass = "row-std-fill";
+
+  const tr = el("tr", { "data-id": sample.id, class: rowClass }, []);
 
   const idText = sample.id_synthesized ? `${sample.id}*` : sample.id;
   tr.append(el("td", { class: isInsuf ? "col-id dim" : "col-id" }, [idText]));
@@ -333,7 +339,10 @@ function buildRow(sample: BatchSample, metadata: Metadata): HTMLElement {
     const decimals = k === "B" ? 4 : 3;
     const out = isOutOfRange(value, stats[k]);
     const isMissing = isInsuf && sample.missing_required.includes(k);
-    tr.append(fmtCell(value, decimals, out, isMissing));
+    const isFilled = isStdFill && sample.filled_elements.includes(k);
+    const td = fmtCell(value, decimals, out, isMissing);
+    if (isFilled) td.classList.add("cell-filled");
+    tr.append(td);
   }
 
   const j9Td = el("td", { class: "col-j9" }, []);
@@ -372,18 +381,39 @@ function sortedSamples(samples: BatchSample[], state: BatchState): BatchSample[]
   if (!state.sortKey) return samples;
   const key = state.sortKey;
   const dir = state.sortDir === "asc" ? 1 : -1;
-  return [...samples].sort((a, b) => {
-    const av = a.prediction ? a.prediction[key] : null;
-    const bv = b.prediction ? b.prediction[key] : null;
+
+  // Group INSUF+std_fill pairs so they always sort together.
+  // The backend emits std_fill immediately after its INSUF parent, so we
+  // detect the pair by consecutive positions in the flat array.
+  const groups: BatchSample[][] = [];
+  let i = 0;
+  while (i < samples.length) {
+    const s = samples[i];
+    if (s.status === "insufficient" && i + 1 < samples.length && samples[i + 1].status === "std_fill") {
+      groups.push([s, samples[i + 1]]);
+      i += 2;
+    } else {
+      groups.push([s]);
+      i += 1;
+    }
+  }
+
+  groups.sort((ga, gb) => {
+    // Sort by the best (most informative) prediction in the group.
+    // std_fill rows carry a prediction; bare INSUF rows do not.
+    const av = ga.find((s) => s.prediction)?.prediction?.[key] ?? null;
+    const bv = gb.find((s) => s.prediction)?.prediction?.[key] ?? null;
     if (av === null && bv === null) return 0;
     if (av === null) return 1;
     if (bv === null) return -1;
     return (av - bv) * dir;
   });
+
+  return groups.flat();
 }
 
 function exportCsv(data: BatchResponse): void {
-  const headers = ["heat_id", "grade", "status", "missing_required", ...ALL_ELEMENTS, "J9", "J15", "delta"];
+  const headers = ["heat_id", "grade", "status", "missing_required", "filled_elements", ...ALL_ELEMENTS, "J9", "J15", "delta"];
   const rows = [headers.map(csvCell).join(",")];
   for (const s of data.samples) {
     const cells: string[] = [
@@ -391,6 +421,7 @@ function exportCsv(data: BatchResponse): void {
       csvCell(s.grade ?? ""),
       csvCell(s.status),
       csvCell(s.missing_required.join("|")),
+      csvCell((s.filled_elements ?? []).join("|")),
     ];
     for (const k of ALL_ELEMENTS) {
       const v = s.composition[k as ElementKey];
@@ -470,6 +501,14 @@ export function renderBatch(
     ]));
   }
 
+  if (summary.std_fill > 0) {
+    summaryParts.push(el("span", { class: "summary-sep" }, [" · "]));
+    summaryParts.push(el("span", { class: "summary-std" }, [
+      el("strong", {}, [String(summary.std_fill)]),
+      ` ${text.batchStdFill}`,
+    ]));
+  }
+
   if (summary.skipped_empty > 0) {
     summaryParts.push(el("span", { class: "summary-sep" }, [" · "]));
     summaryParts.push(el("span", { class: "summary-skipped" }, [
@@ -498,7 +537,7 @@ export function renderBatch(
     el("span", {}, [text.batchExport]),
     el("span", { class: "btn__chev" }, ["↓"]),
   ]) as HTMLButtonElement;
-  if (summary.predicted === 0) exportBtn.disabled = true;
+  if (summary.predicted === 0 && summary.std_fill === 0) exportBtn.disabled = true;
 
   const clearBtn = el("button", { class: "btn btn--ghost", id: "btn-clear" }, [
     text.batchClear,

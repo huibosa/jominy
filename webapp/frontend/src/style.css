@@ -1126,6 +1126,22 @@ body::before {
   opacity: 0.65;
 }
 
+/* GB-standard-filled companion row — amber left accent, slightly dimmed */
+.batch-table tbody tr.row-std-fill td {
+  opacity: 0.85;
+}
+
+.batch-table tbody tr.row-std-fill td.col-id {
+  box-shadow: inset 3px 0 0 var(--warn), 1px 0 0 var(--hairline-strong);
+}
+
+/* Cells whose value was filled from the GB national standard */
+.batch-table tbody td.cell-filled {
+  color: var(--warn);
+  opacity: 0.7;
+  font-style: italic;
+}
+
 .batch-table tbody td.col-j9.has-warning,
 .batch-table tbody td.col-j15.has-warning {
   color: var(--warn);
@@ -1150,11 +1166,13 @@ body::before {
 /* Summary strip counts */
 .summary-ok strong      { color: var(--forge);      font-weight: 500; margin-right: 2px; }
 .summary-insuf strong   { color: var(--warn);        font-weight: 500; margin-right: 2px; }
+.summary-std strong     { color: #7ab8f5;            font-weight: 500; margin-right: 2px; }
 .summary-skipped strong { color: var(--text-muted);  font-weight: 500; margin-right: 2px; }
 .summary-dedup strong   { color: var(--text-soft);   font-weight: 500; margin-right: 2px; }
 .summary-err strong     { color: var(--error);       font-weight: 500; margin-right: 2px; }
 .summary-ok      { color: var(--forge); }
 .summary-insuf   { color: var(--warn); }
+.summary-std     { color: #7ab8f5; }
 .summary-skipped { color: var(--text-muted); }
 .summary-dedup   { color: var(--text-soft); }
 .summary-err     { color: var(--error); }
