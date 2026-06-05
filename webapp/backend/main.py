@@ -56,25 +56,48 @@ REQUIRED_KEYS = {"C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr"}
 
 MAX_BATCH_BYTES = 20 * 1024 * 1024  # 20 MB hard cap
 
+# ---------------------------------------------------------------------------
+# Valid input bounds (GB/T 5216-2013 with generous margin).
+# These are the hard limits accepted by CompositionRequest and served to
+# the frontend for input[min]/input[max] attributes.
+# All lower bounds are 0 (physically non-negative; out-of-range warnings
+# fire via feature_stats p01/p99 before the model is called).
+# ---------------------------------------------------------------------------
+ELEMENT_INPUT_BOUNDS: dict[str, tuple[float, float]] = {
+    "C":  (0.0, 0.35),   # GB 0.17–0.23
+    "Si": (0.0, 0.60),   # GB 0.17–0.37
+    "Mn": (0.0, 1.60),   # GB 0.80–1.10
+    "P":  (0.0, 0.045),  # GB ≤ 0.035
+    "S":  (0.0, 0.045),  # GB ≤ 0.035
+    "Cu": (0.0, 0.50),   # GB ≤ 0.30
+    "Ni": (0.0, 0.50),   # GB ≤ 0.30
+    "Cr": (0.0, 1.60),   # GB 1.00–1.30
+    "V":  (0.0, 0.30),   # not in GB spec
+    "Ti": (0.0, 0.20),   # GB 0.04–0.10
+    "W":  (0.0, 0.20),   # not in GB spec
+    "Al": (0.0, 0.10),   # GB Als ≥ 0.020
+    "B":  (0.0, 0.005),  # not in GB spec; typical max ≈ 0.005
+}
+
 
 # ---------------------------------------------------------------------------
 # Pydantic models — single predict
 # ---------------------------------------------------------------------------
 
 class CompositionRequest(BaseModel):
-    C: Annotated[float, Field(ge=0, le=2.0, description="Carbon, wt%")]
-    Si: Annotated[float, Field(ge=0, le=3.0, description="Silicon, wt%")]
-    Mn: Annotated[float, Field(ge=0, le=3.0, description="Manganese, wt%")]
-    P: Annotated[float, Field(ge=0, le=0.1, description="Phosphorus, wt%")]
-    S: Annotated[float, Field(ge=0, le=0.1, description="Sulfur, wt%")]
-    Cu: Annotated[float, Field(ge=0, le=1.0, description="Copper, wt%")]
-    Ni: Annotated[float, Field(ge=0, le=5.0, description="Nickel, wt%")]
-    Cr: Annotated[float, Field(ge=0, le=5.0, description="Chromium, wt%")]
-    V: Annotated[float | None, Field(default=None, ge=0, le=1.0, description="Vanadium, wt% (optional)")] = None
-    Ti: Annotated[float | None, Field(default=None, ge=0, le=1.0, description="Titanium, wt% (optional)")] = None
-    W: Annotated[float | None, Field(default=None, ge=0, le=1.0, description="Tungsten, wt% (optional)")] = None
-    Al: Annotated[float | None, Field(default=None, ge=0, le=1.0, description="Aluminum, wt% (optional)")] = None
-    B: Annotated[float | None, Field(default=None, ge=0, le=0.05, description="Boron, wt% (optional)")] = None
+    C: Annotated[float, Field(ge=0, le=0.35,  description="Carbon, wt%")]
+    Si: Annotated[float, Field(ge=0, le=0.60,  description="Silicon, wt%")]
+    Mn: Annotated[float, Field(ge=0, le=1.60,  description="Manganese, wt%")]
+    P: Annotated[float, Field(ge=0, le=0.045, description="Phosphorus, wt%")]
+    S: Annotated[float, Field(ge=0, le=0.045, description="Sulfur, wt%")]
+    Cu: Annotated[float, Field(ge=0, le=0.50,  description="Copper, wt%")]
+    Ni: Annotated[float, Field(ge=0, le=0.50,  description="Nickel, wt%")]
+    Cr: Annotated[float, Field(ge=0, le=1.60,  description="Chromium, wt%")]
+    V: Annotated[float | None, Field(default=None, ge=0, le=0.30,  description="Vanadium, wt% (optional)")] = None
+    Ti: Annotated[float | None, Field(default=None, ge=0, le=0.20,  description="Titanium, wt% (optional)")] = None
+    W: Annotated[float | None, Field(default=None, ge=0, le=0.20,  description="Tungsten, wt% (optional)")] = None
+    Al: Annotated[float | None, Field(default=None, ge=0, le=0.10,  description="Aluminum, wt% (optional)")] = None
+    B: Annotated[float | None, Field(default=None, ge=0, le=0.005, description="Boron, wt% (optional)")] = None
 
 
 class PredictionResponse(BaseModel):
@@ -172,6 +195,7 @@ def metadata() -> dict:
         "j9_train_rows": pred.metadata["j9_train_rows"],
         "delta_train_rows": pred.metadata["delta_train_rows"],
         "element_fields": ELEMENT_FIELDS,
+        "element_input_bounds": ELEMENT_INPUT_BOUNDS,
     }
 
 

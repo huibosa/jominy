@@ -44,6 +44,8 @@ export interface Metadata {
   j9_train_rows: number;
   delta_train_rows: number;
   element_fields: string[];
+  /** GB/T 5216-2013-derived hard limits [min, max] for each element input. */
+  element_input_bounds: Record<string, [number, number]>;
 }
 
 // Authoritative source for ElementKey — shared.ts imports and re-exports this.

@@ -40,12 +40,11 @@ function sampleFormValues(): FormValues {
   ) as FormValues;
 }
 
-/** Return the appropriate step for a numeric input based on the element's typical range.
- *  Elements whose p99 sits below 0.001 (e.g. B: p99=0.0005) need 4-decimal-place
+/** Derive the input step from the element's GB-standard upper bound.
+ *  Elements whose max sits below 0.01 (e.g. B: max=0.005) need 4-decimal-place
  *  granularity; everything else is fine at 3 decimal places. */
-function elementStep(stat: FeatureStat | undefined): string {
-  if (stat?.p99 !== undefined && stat.p99 < 0.001) return "0.0001";
-  return "0.001";
+function elementStep(inputMax: number): string {
+  return inputMax < 0.01 ? "0.0001" : "0.001";
 }
 
 function buildField(
@@ -53,14 +52,17 @@ function buildField(
   optional: boolean,
   initial: string,
   stat: FeatureStat | undefined,
+  bounds: [number, number],
   language: Language,
 ): HTMLLabelElement {
   const text = TRANSLATIONS[language];
+  const [inputMin, inputMax] = bounds;
   const input = el("input", {
     type: "number",
     name: key,
-    step: elementStep(stat),
-    min: "0",
+    step: elementStep(inputMax),
+    min: String(inputMin),
+    max: String(inputMax),
     placeholder: optional ? "—" : "",
     "data-key": key,
   });
@@ -221,16 +223,17 @@ export function renderSingle(
 ): void {
   const text = TRANSLATIONS[language];
   const stats = metadata.feature_stats;
+  const bounds = metadata.element_input_bounds;
   clearChildren(root);
 
   // ----- Form (paper) -----
   const requiredGrid = el("div", { class: "element-grid" });
   for (const k of REQUIRED_ELEMENTS) {
-    requiredGrid.append(buildField(k, false, state.formValues[k], stats[k], language));
+    requiredGrid.append(buildField(k, false, state.formValues[k], stats[k], bounds[k], language));
   }
   const optionalGrid = el("div", { class: "element-grid" });
   for (const k of OPTIONAL_ELEMENTS) {
-    optionalGrid.append(buildField(k, true, state.formValues[k], stats[k], language));
+    optionalGrid.append(buildField(k, true, state.formValues[k], stats[k], bounds[k], language));
   }
 
   const form = el("form", { id: "composition-form" }, [
