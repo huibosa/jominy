@@ -44,7 +44,9 @@ export const SAMPLE_COMPOSITION: CompositionRequest = {
 export const TRANSLATIONS = {
   zh: {
     htmlLang: "zh-CN",
-    title: "Jominy 淬透性预测器",
+    title: "20CrMnTiH 端淬预测",
+    titleBase: "20CrMnTiH 端淬",
+    titleGlyph: " 预测",
     subtitleProject: "JMNY-01",
     subtitleRev: "REV.B",
     subtitleSpec: "ROCKWELL HRC · 9/15 mm",
@@ -110,7 +112,9 @@ export const TRANSLATIONS = {
   },
   en: {
     htmlLang: "en",
-    title: "Jominy Hardenability Predictor",
+    title: "20CrMnTiH Jominy Prediction",
+    titleBase: "20CrMnTiH Jominy",
+    titleGlyph: " Prediction",
     subtitleProject: "JMNY-01",
     subtitleRev: "REV.B",
     subtitleSpec: "ROCKWELL HRC · 9/15 mm",

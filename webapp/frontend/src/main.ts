@@ -48,8 +48,8 @@ function buildTitleBlock(state: AppState, onLanguageToggle: () => void): HTMLEle
 
   return el("header", { class: "title-block" }, [
     el("h1", { class: "title-block__name" }, [
-      "JOMI",
-      el("span", { class: "glyph" }, ["NY"]),
+      text.titleBase,
+      el("span", { class: "glyph" }, [text.titleGlyph]),
     ]),
     el("div", { class: "title-block__sub" }, [
       el("div", {}, [text.subtitleSpec]),
