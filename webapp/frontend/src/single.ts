@@ -1,6 +1,6 @@
 // Single-sample page — restyled into the Forge & Quench system.
 
-import type { CompositionRequest, Metadata, PredictionResponse } from "./types";
+import type { CompositionRequest, FeatureStat, Metadata, PredictionResponse } from "./types";
 import {
   ALL_ELEMENTS,
   ElementKey,
@@ -11,6 +11,7 @@ import {
   SAMPLE_COMPOSITION,
   TRANSLATIONS,
   el,
+  fmtRange,
   localizedWarning,
   postPrediction,
 } from "./shared";
@@ -43,6 +44,7 @@ function buildField(
   key: ElementKey,
   optional: boolean,
   initial: string,
+  stat: FeatureStat | undefined,
   language: Language,
 ): HTMLLabelElement {
   const text = TRANSLATIONS[language];
@@ -69,6 +71,7 @@ function buildField(
         el("span", { class: "field__name" }, [text.elements[key]]),
       ]),
       input,
+      el("span", { class: "field__range" }, [fmtRange(stat, language)]),
     ],
   );
 }
@@ -203,23 +206,23 @@ function renderError(container: HTMLElement, message: string): void {
 
 export function renderSingle(
   root: HTMLElement,
-  _metadata: Metadata,
+  metadata: Metadata,
   state: SingleState,
   language: Language,
   onChange: () => void,
 ): void {
   const text = TRANSLATIONS[language];
-
+  const stats = metadata.feature_stats;
   clearChildren(root);
 
   // ----- Form (paper) -----
   const requiredGrid = el("div", { class: "element-grid" });
   for (const k of REQUIRED_ELEMENTS) {
-    requiredGrid.append(buildField(k, false, state.formValues[k], language));
+    requiredGrid.append(buildField(k, false, state.formValues[k], stats[k], language));
   }
   const optionalGrid = el("div", { class: "element-grid" });
   for (const k of OPTIONAL_ELEMENTS) {
-    optionalGrid.append(buildField(k, true, state.formValues[k], language));
+    optionalGrid.append(buildField(k, true, state.formValues[k], stats[k], language));
   }
 
   const form = el("form", { id: "composition-form" }, [

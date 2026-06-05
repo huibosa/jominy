@@ -448,6 +448,12 @@ body::before {
   margin: 0;
 }
 
+.field__range {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(0, 0, 0, 0.45);
+}
 
 /* ------------------------------------------------------------
    Buttons
