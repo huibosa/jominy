@@ -48,7 +48,8 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Build and bundle (Tauri)
+      # Pass 1: create the GitHub release, upload online installer + latest.json
+      - name: Build online installer + create release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,7 +61,10 @@ jobs:
           releaseBody: |
             Windows desktop installer for the Jominy hardenability predictor.
 
-            **First install**: download `Jominy_Setup_*.exe` and run it.
+            **First install** — pick one:
+            - `*-setup.exe` — online installer (~5 MB, downloads WebView2 if needed)
+            - `*-setup-offline.exe` — offline installer (~150 MB, WebView2 bundled)
+
             Windows may show a SmartScreen warning — click "More info → Run anyway".
 
             **Update**: if you already have Jominy installed, the app will detect this release
@@ -69,3 +73,26 @@ jobs:
           prerelease: false
           projectPath: src-tauri
           includeUpdaterJson: true
+
+      # Pass 2: rebuild with offlineInstaller (Rust cache keeps this fast)
+      - name: Build offline installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        working-directory: src-tauri
+        shell: pwsh
+        run: |
+          bunx "@tauri-apps/cli@2" build `
+            --config '{"bundle":{"windows":{"webviewInstallMode":{"type":"offlineInstaller"}}}}'
+
+      - name: Upload offline installer to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          $src = "src-tauri/target/release/bundle/nsis/jominy_${version}_x64-setup.exe"
+          $dst = "src-tauri/target/release/bundle/nsis/jominy_${version}_x64-setup-offline.exe"
+          Move-Item $src $dst
+          gh release upload $env:TAG_NAME $dst --clobber
