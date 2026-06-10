@@ -339,6 +339,55 @@ body::before {
 }
 
 /* ------------------------------------------------------------
+   Standard toggle — 2-button segmented control inside .paper
+   ------------------------------------------------------------ */
+
+.standard-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 16px;
+  border-bottom: var(--rule) solid var(--paper-edge);
+  margin-bottom: 4px;
+}
+
+.standard-toggle__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.45);
+  margin-right: 4px;
+}
+
+.standard-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: var(--rule) solid rgba(0, 0, 0, 0.25);
+  color: rgba(0, 0, 0, 0.55);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms, background 120ms;
+}
+
+.standard-toggle__btn:hover {
+  border-color: var(--forge);
+  color: var(--forge);
+}
+
+.standard-toggle__btn--active {
+  border-color: var(--paper-ink);
+  color: var(--paper-ink);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* ------------------------------------------------------------
    Element grid + inputs (paper context)
    ------------------------------------------------------------ */
 
@@ -427,6 +476,15 @@ body::before {
 
 .field input:focus {
   border-bottom-color: var(--forge);
+  border-bottom-width: var(--rule-strong);
+  padding-bottom: 2px;
+}
+
+/* Highlight inputs that fall outside the active standard's bounds after a
+   standard switch. The custom input styling overrides browser native :invalid
+   appearance, so we provide an explicit rule here. */
+.paper .field input:invalid {
+  border-bottom-color: #c0392b;
   border-bottom-width: var(--rule-strong);
   padding-bottom: 2px;
 }

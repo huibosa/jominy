@@ -1,12 +1,14 @@
 // Shared building blocks for the app shell — element lists, language store,
 // translations, tiny DOM helpers, API base.
 
-import type { CompositionRequest, ElementKey, FeatureStat, Metadata, PredictionResponse } from "./types";
+import type { CompositionRequest, ElementKey, FeatureStat, Metadata, PredictionResponse, StandardKey } from "./types";
 import { BASE } from "./api";
 
-// Re-export ElementKey so existing consumers (`import { ElementKey } from "./shared"`)
-// keep working without churn. types.ts is the authoritative source.
-export type { ElementKey };
+// Re-export ElementKey and StandardKey so existing consumers keep working without churn.
+export type { ElementKey, StandardKey };
+
+/** String form values for all 13 element inputs. */
+export type FormValues = Record<ElementKey, string>;
 
 export const REQUIRED_ELEMENTS = [
   "C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr",
@@ -25,21 +27,49 @@ export type Language = "zh" | "en";
 const LANGUAGE_STORAGE_KEY = "jominy-language";
 const DEFAULT_LANGUAGE: Language = "zh";
 
-export const SAMPLE_COMPOSITION: CompositionRequest = {
-  C: 0.20,
-  Si: 0.26,
-  Mn: 0.96,
-  P: 0.012,
-  S: 0.018,
-  Cu: 0.05,
-  Ni: 0.10,
-  Cr: 1.10,
-  V: null,
-  Ti: 0.005,
-  W: null,
-  Al: 0.025,
-  B: null,
-};
+const STANDARD_STORAGE_KEY = "jominy-standard";
+const DEFAULT_STANDARD: StandardKey = "gbt5216";
+
+export function getInitialStandard(): StandardKey {
+  const saved = window.localStorage.getItem(STANDARD_STORAGE_KEY);
+  return saved === "gbt3077" || saved === "gbt5216" ? saved : DEFAULT_STANDARD;
+}
+
+export function saveStandard(standard: StandardKey): void {
+  window.localStorage.setItem(STANDARD_STORAGE_KEY, standard);
+}
+
+/**
+ * Return form values (all strings) pre-filled with GB spec midpoints for
+ * the given standard. Used by the single-page "Reset to sample" button.
+ *
+ * Rules:
+ *   - Both bounds present → midpoint
+ *   - Upper-bound only (P, S, Cu, Ni) → upper / 2
+ *   - Not in spec (V, W, Al, B) → "" (blank)
+ */
+export function sampleForStandard(standard: StandardKey): FormValues {
+  const byStandard: Record<StandardKey, Partial<Record<ElementKey, string>>> = {
+    gbt3077: { Mn: "0.950", Cr: "1.150" },
+    gbt5216: { Mn: "1.000", Cr: "1.225" },
+  };
+  const base: Record<ElementKey, string> = {
+    C:  "0.200",
+    Si: "0.270",
+    Mn: "", // filled below
+    P:  "0.018",
+    S:  "0.018",
+    Cu: "0.150",
+    Ni: "0.150",
+    Cr: "", // filled below
+    Ti: "0.070",
+    V:  "",
+    W:  "",
+    Al: "",
+    B:  "",
+  };
+  return { ...base, ...byStandard[standard] } as FormValues;
+}
 
 export const TRANSLATIONS = {
   zh: {
@@ -56,6 +86,9 @@ export const TRANSLATIONS = {
     switchAria: "Switch language to English",
     tabSingle: "单样本",
     tabBatch: "批量分析",
+    standardLabel: "标准",
+    standard3077: "GB/T 3077",
+    standard5216: "GB/T 5216",
     requiredTitle: "必填元素",
     requiredStamp: "REQUIRED · wt%",
     optionalTitle: "可选微量元素",
@@ -125,6 +158,9 @@ export const TRANSLATIONS = {
     switchAria: "切换到中文",
     tabSingle: "Single",
     tabBatch: "Batch",
+    standardLabel: "Standard",
+    standard3077: "GB/T 3077",
+    standard5216: "GB/T 5216",
     requiredTitle: "Required elements",
     requiredStamp: "REQUIRED · wt%",
     optionalTitle: "Optional trace elements",

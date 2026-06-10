@@ -8,7 +8,7 @@ export interface CompositionRequest {
   Ni: number;
   Cr: number;
   V: number | null;
-  Ti: number | null;
+  Ti: number;
   W: number | null;
   Al: number | null;
   B: number | null;
@@ -44,9 +44,12 @@ export interface Metadata {
   j9_train_rows: number;
   delta_train_rows: number;
   element_fields: string[];
-  /** GB/T 5216-2013-derived hard limits [min, max] for each element input. */
-  element_input_bounds: Record<string, [number, number]>;
+  /** Per-standard hard limits [min, max] for each element input, keyed by StandardKey. */
+  standard_bounds: Record<StandardKey, Record<string, [number, number]>>;
 }
+
+/** Identifier for the two GB standards with distinct chemistry bounds for 20CrMnTi. */
+export type StandardKey = "gbt3077" | "gbt5216";
 
 // Authoritative source for ElementKey — shared.ts imports and re-exports this.
 export type ElementKey =

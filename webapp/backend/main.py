@@ -57,26 +57,38 @@ REQUIRED_KEYS = {"C", "Si", "Mn", "P", "S", "Cu", "Ni", "Cr"}
 MAX_BATCH_BYTES = 20 * 1024 * 1024  # 20 MB hard cap
 
 # ---------------------------------------------------------------------------
-# Valid input bounds (GB/T 5216-2013 with generous margin).
-# These are the hard limits accepted by CompositionRequest and served to
-# the frontend for input[min]/input[max] attributes.
-# All lower bounds are 0 (physically non-negative; out-of-range warnings
-# fire via feature_stats p01/p99 before the model is called).
+# Per-standard input bounds served to the frontend for input[min]/input[max].
+# The backend CompositionRequest keeps wide limits and is not changed here;
+# the standard selector is a frontend-only enforcement layer.
+#
+# GB/T 3077-2015 and GB/T 5216-2014 differ only in Mn and Cr upper bounds.
+# V, W, Al, B are not specified in either standard — wide limits retained.
 # ---------------------------------------------------------------------------
-ELEMENT_INPUT_BOUNDS: dict[str, tuple[float, float]] = {
-    "C":  (0.0, 0.35),   # GB 0.17–0.23
-    "Si": (0.0, 0.60),   # GB 0.17–0.37
-    "Mn": (0.0, 1.60),   # GB 0.80–1.10
-    "P":  (0.0, 0.045),  # GB ≤ 0.035
-    "S":  (0.0, 0.045),  # GB ≤ 0.035
-    "Cu": (0.0, 0.50),   # GB ≤ 0.30
-    "Ni": (0.0, 0.50),   # GB ≤ 0.30
-    "Cr": (0.0, 1.60),   # GB 1.00–1.30
-    "V":  (0.0, 0.30),   # not in GB spec
-    "Ti": (0.0, 0.20),   # GB 0.04–0.10
-    "W":  (0.0, 0.20),   # not in GB spec
-    "Al": (0.0, 0.10),   # GB Als ≥ 0.020
-    "B":  (0.0, 0.005),  # not in GB spec; typical max ≈ 0.005
+_BOUNDS_SHARED: dict[str, tuple[float, float]] = {
+    "C":  (0.17, 0.23),
+    "Si": (0.17, 0.37),
+    "P":  (0.0,  0.035),
+    "S":  (0.0,  0.035),
+    "Cu": (0.0,  0.30),
+    "Ni": (0.0,  0.30),
+    "Ti": (0.04, 0.10),
+    "V":  (0.0,  0.30),   # not in GB spec; wide limit
+    "W":  (0.0,  0.20),   # not in GB spec; wide limit
+    "Al": (0.0,  0.10),   # not in GB spec; wide limit
+    "B":  (0.0,  0.005),  # not in GB spec; wide limit
+}
+
+STANDARD_BOUNDS: dict[str, dict[str, tuple[float, float]]] = {
+    "gbt3077": {
+        **_BOUNDS_SHARED,
+        "Mn": (0.80, 1.10),  # GB/T 3077-2015
+        "Cr": (1.00, 1.30),  # GB/T 3077-2015
+    },
+    "gbt5216": {
+        **_BOUNDS_SHARED,
+        "Mn": (0.80, 1.20),  # GB/T 5216-2014 (H-grade, wider)
+        "Cr": (1.00, 1.45),  # GB/T 5216-2014 (H-grade, wider)
+    },
 }
 
 
@@ -195,7 +207,7 @@ def metadata() -> dict:
         "j9_train_rows": pred.metadata["j9_train_rows"],
         "delta_train_rows": pred.metadata["delta_train_rows"],
         "element_fields": ELEMENT_FIELDS,
-        "element_input_bounds": ELEMENT_INPUT_BOUNDS,
+        "standard_bounds": STANDARD_BOUNDS,
     }
 
 
