@@ -453,9 +453,10 @@ body::before {
 }
 
 .field__name {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0.10em;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(0, 0, 0, 0.55);
 }

@@ -322,7 +322,8 @@ function buildHeader(language: Language, state: BatchState, onSort: (key: SortKe
   return tr;
 }
 
-function buildRow(sample: BatchSample, metadata: Metadata): HTMLElement {
+function buildRow(sample: BatchSample, metadata: Metadata, language: Language): HTMLElement {
+  const text = TRANSLATIONS[language];
   const stats = metadata.feature_stats;
   const isInsuf = sample.status === "insufficient";
   const isStdFill = sample.status === "std_fill";
@@ -357,14 +358,14 @@ function buildRow(sample: BatchSample, metadata: Metadata): HTMLElement {
     j15Td.classList.add("is-insuf");
     const tip = sample.missing_required.join(", ");
     if (tip) { j9Td.setAttribute("title", tip); j15Td.setAttribute("title", tip); }
-    j9Td.append(document.createTextNode("INSUF"));
-    j15Td.append(document.createTextNode("INSUF"));
+    j9Td.append(document.createTextNode(text.batchInsuf));
+    j15Td.append(document.createTextNode(text.batchInsuf));
   } else if (isErr) {
     j9Td.classList.add("has-error");
     j15Td.classList.add("has-error");
     if (sample.error) { j9Td.setAttribute("title", sample.error); j15Td.setAttribute("title", sample.error); }
-    j9Td.append(document.createTextNode("ERR"));
-    j15Td.append(document.createTextNode("ERR"));
+    j9Td.append(document.createTextNode(text.batchErr));
+    j15Td.append(document.createTextNode(text.batchErr));
   } else if (sample.prediction) {
     if (sample.prediction.warnings.length > 0) {
       j9Td.classList.add("has-warning");
@@ -585,7 +586,7 @@ export function renderBatch(
   const thead = el("thead", {}, [buildHeader(language, state, onSort)]);
   const tbody = el("tbody", {});
   for (const sample of sortedSamples(data.samples, state)) {
-    tbody.append(buildRow(sample, metadata));
+    tbody.append(buildRow(sample, metadata, language));
   }
 
   const table = el("table", { class: "batch-table" }, [thead, tbody]);

@@ -125,7 +125,11 @@ function parseComposition(form: HTMLFormElement, language: Language): Compositio
     const val = input.value.trim();
     if (val === "") return null;
     const n = Number(val);
-    return Number.isFinite(n) ? n : null;
+    if (!Number.isFinite(n)) return null;
+    if (input.validity.rangeUnderflow || input.validity.rangeOverflow) {
+      throw new Error(text.rangeError(key, Number(input.min), Number(input.max)));
+    }
+    return n;
   };
   // required() covers the single-page required set: C Si Mn P S Cu Ni Cr Ti.
   const required = (key: SingleRequiredKey) => {
@@ -277,7 +281,7 @@ export function renderSingle(
     optionalGrid.append(buildField(k, true, state.formValues[k], stats[k], bounds[k], language));
   }
 
-  const form = el("form", { id: "composition-form" }, [
+  const form = el("form", { id: "composition-form", novalidate: "" }, [
     standardToggle,
     el("div", { class: "section" }, [
       el("div", { class: "section__heading" }, [
