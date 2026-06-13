@@ -19,11 +19,11 @@
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "languages": ["SimpChinese"],
+        "displayLanguageSelector": false
       }
-    },
-    "nsis": {
-      "languages": ["SimpChinese"],
-      "displayLanguageSelector": false
     },
     "icon": [
       "icons/32x32.png",
