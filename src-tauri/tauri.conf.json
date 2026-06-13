@@ -1,6 +1,6 @@
 {
   "productName": "jominy",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "identifier": "com.huibosa.jominy",
   "build": {
     "frontendDist": "../webapp/frontend/dist",
